@@ -64,6 +64,31 @@ input{width:100%;margin-top:4px;background:var(--bg);color:var(--tx);border:1px 
 #toast.on{opacity:1}
 input,textarea{background:var(--g1);border-color:var(--g2)}.btn.ghost{border-color:var(--g2)}th{color:var(--g3)}.card,.stat{background:linear-gradient(180deg,var(--g1),var(--panel));border-color:var(--g2)}nav{overflow-x:auto;border:1px solid var(--g2)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+
+#menuBtn{border:1px solid var(--line);background:var(--panel);color:var(--tx);font-size:20px;line-height:1;border-radius:12px;padding:8px 12px;cursor:pointer;margin-right:10px}
+header h1{flex:1}
+nav{position:fixed;top:0;left:0;bottom:0;width:min(78vw,300px);flex-direction:column;gap:4px;margin:0;border-radius:0 18px 18px 0;padding:calc(env(safe-area-inset-top,0px) + 20px) 12px calc(env(safe-area-inset-bottom,0px) + 24px);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;transform:translateX(-105%);transition:transform .25s;z-index:30;border-right:1px solid var(--line)}
+nav.open{transform:none}
+nav button{flex:0 0 auto;text-align:left;font-size:16px;padding:15px 14px}
+#scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .25s;z-index:20}
+#scrim.on{opacity:1;pointer-events:auto}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;border:1px solid var(--line);background:none;color:var(--mut);font:600 13px Sora,sans-serif;padding:9px 0;border-radius:10px;cursor:pointer}
+.seg button.on{background:var(--gold);color:#04070d;border-color:var(--gold)}
+.bar{height:8px;background:var(--line);border-radius:9px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--go);transition:width .6s}
+.chip{display:inline-block;padding:4px 10px;border:1px solid var(--line);border-radius:99px;font-size:12px;margin:8px 6px 0 0;color:var(--mut)}
+.chip.on{background:var(--gold);color:#04070d;border-color:var(--gold)}
+nav button[hidden]{display:none}
+.pg{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:4px 12px;margin-top:10px;background:var(--bg)}
+.pgb{flex:1;text-align:left;background:none;border:0;color:var(--tx);font:600 15px Sora,sans-serif;padding:10px 0;cursor:pointer}
+.pgb small{display:block;color:var(--mut);font-weight:400;font-size:12.5px;margin-top:2px}
+.sw{position:relative;width:50px;height:30px;flex:none}
+.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.sw span{position:absolute;inset:0;background:var(--g2);border-radius:99px;transition:background .2s}
+.sw span:after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
+.sw input:checked+span{background:var(--go)}
+.sw input:checked+span:after{transform:translateX(20px)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -71,21 +96,26 @@ input,textarea{background:var(--g1);border-color:var(--g2)}.btn.ghost{border-col
 <body>
 <main>
 <header>
+  <button id="menuBtn" aria-label="Menu" aria-expanded="false">&#9776;</button>
   <h1><img id="hdrIco" alt="" width="30" height="30" style="vertical-align:-6px;margin-right:8px;border-radius:8px">Hustle HQ</h1>
   <div class="lvl"><div id="lvl">Rookie</div><div class="xp"><i id="xp"></i></div></div>
 </header>
-<nav role="tablist">
+<div id="scrim"></div>
+<nav role="tablist" id="nav">
   <button role="tab" aria-selected="true" data-t="dash">Scoreboard</button>
   <button role="tab" aria-selected="false" data-t="calc">Check</button>
-  <button role="tab" aria-selected="false" data-t="setup">My setup</button>
+  
   <button role="tab" aria-selected="false" data-t="whatif">What-if</button>
   <button role="tab" aria-selected="false" data-t="log">Log</button>
   <button role="tab" aria-selected="false" data-t="earn">Earn</button>
   <button role="tab" aria-selected="false" data-t="hist">History</button>
   <button role="tab" aria-selected="false" data-t="sync">Handoff</button>
+  <button role="tab" aria-selected="false" data-t="settings">Settings</button>
 </nav>
 
 <section id="dash">
+  <div class="card" id="quest"></div>
+  <div class="card"><div class="seg" id="seg"><button data-p="day" class="on">Day</button><button data-p="week">Week</button><button data-p="month">Month</button><button data-p="year">Year</button></div><div id="earnBig"></div><div class="wrap" id="earnTbl" style="margin-top:12px"></div></div>
   <div class="card hero">
     <div class="ring"><svg width="132" height="132" viewBox="0 0 132 132"><circle cx="66" cy="66" r="56" fill="none" stroke="var(--line)" stroke-width="12"/><circle id="arc" cx="66" cy="66" r="56" fill="none" stroke="var(--gold)" stroke-width="12" stroke-linecap="round" stroke-dasharray="352" stroke-dashoffset="352" style="transition:stroke-dashoffset .9s"/></svg><b id="follow">--</b></div>
     <div><h2>Followed the call</h2><p id="followTxt">Load your log to see how often your choices matched the shortcut's verdict.</p></div>
@@ -96,30 +126,24 @@ input,textarea{background:var(--g1);border-color:var(--g2)}.btn.ghost{border-col
   <div class="card"><h2 style="font-size:17px">Zones that pay</h2><div class="wrap" id="zones"><p class="hint">Add a zone column to the log to see this.</p></div></div>
   <div class="card"><h2 style="font-size:17px">By month</h2><div class="wrap" id="months"><p class="hint">Needs dates like 2026-10-24 in the log.</p></div></div>
   <div class="card"><h2 style="font-size:17px">Best hours</h2><div class="wrap" id="hours"><p class="hint">Add a time column (like 12:40) to see this.</p></div></div>
-  <div class="card"><h2 style="font-size:17px">Tax summary</h2><div id="tax"><p class="hint">Accepted offers only. Based on the mileage rate in My setup.</p></div></div>
+  <div class="card"><h2 style="font-size:17px">Tax summary</h2><div id="tax"><p class="hint">Accepted offers only. Based on the mileage rate set in the app code.</p></div></div>
 </section>
 
-<section id="calc" hidden><div class="card"><h2 style="font-size:17px">Check an offer</h2><p class="hint">Same rule as What-if, using your saved settings.</p><div class="fields" style="margin-top:12px"><label>Payout ($)<input inputmode="decimal" id="c_p"></label><label>Miles<input inputmode="decimal" id="c_m"></label><label>Items<input inputmode="decimal" id="c_i"></label><label>Est. minutes<input inputmode="decimal" id="c_t"></label><label>Zone (optional)<input id="c_z"></label><label>Acceptance rate (%)<input inputmode="decimal" id="c_r" value="75"></label></div><p class="hint lr"></p><div class="row"><button class="btn" id="c_go">Get verdict</button></div></div><div id="c_out"></div></section>
+<section id="calc" hidden><div class="card"><h2 style="font-size:17px">Check an offer</h2><p class="hint">Same rule as What-if, using your saved settings.</p><div class="fields" style="margin-top:12px"><label>Payout ($)<input inputmode="decimal" id="c_p"></label><label>Miles<input inputmode="decimal" id="c_m"></label><label>Items<input inputmode="decimal" id="c_i"></label><label>Minutes (blank = shortcut formula)<input inputmode="decimal" id="c_t"></label><label>Gas today ($/gal)<input inputmode="decimal" id="c_g"></label><label>Acceptance rate (%)<input inputmode="decimal" id="c_r" value="89"></label></div><p class="hint lr"></p><div class="row"><button class="btn" id="c_go">Get verdict</button></div></div><div id="c_out"></div></section>
 
-<section id="setup" hidden>
-  <div class="card">
-    <h2 style="font-size:17px">Your numbers</h2>
-    <p class="hint">Use the same values as your shortcut so the page and shortcut agree.</p>
-    <div class="fields" id="fields" style="margin-top:12px"></div>
-    <p class="hint lr"></p>
-    <label style="margin-top:12px">Gas price by zone (one per line, like Vista=4.95)<textarea id="zg" style="min-height:70px"></textarea></label>
-    <label style="margin-top:12px">Real monthly totals from your statements (like 2026-09=1450.25,812 for pay, miles)<textarea id="ma" style="min-height:70px"></textarea></label>
-    <div class="row"><button class="btn" id="saveSet">Save settings</button><button class="btn ghost" id="dlSet">Download settings.json</button></div>
-    <p class="hint">Put settings.json in iCloud Drive &gt; Shortcuts so the shortcut can read it.</p>
-  </div>
+<div hidden><div id="fields"></div><textarea id="zg"></textarea><textarea id="ma"></textarea><button id="saveSet"></button><button id="dlSet"></button></div>
+
+<section id="settings" hidden>
+  <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
+  <div class="card"><h2 style="font-size:17px">Pages</h2><p class="hint">Tap a bar to open that page. Use its switch to add or remove it from the menu.</p><div id="pgList"></div></div>
 </section>
-
 <section id="log" hidden>
+  <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card">
     <h2 style="font-size:17px">Paste your offers log</h2>
     <p class="hint">First row is the header: date,time,zone,payout,miles,items,minutes,verdict,choice</p>
     <textarea id="csv" placeholder="2026-10-24,12:40,Vista,10.70,5.5,1,22,Accept,Accepted"></textarea>
-    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="clear">Clear</button></div>
+    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button><button class="btn ghost" id="clear">Clear</button></div>
     <label id="drop" style="display:block;margin-top:12px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop offers.txt or data_archive.zip here, or tap to choose<input type="file" id="file" accept=".csv,.txt,.json,.zip" hidden><small style="display:block;color:var(--mut);margin-top:4px">New rows are added to your saved log. A missing header row is added for you.</small></label>
     <div id="check" style="margin-top:12px"></div>
     <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
@@ -128,43 +152,50 @@ input,textarea{background:var(--g1);border-color:var(--g2)}.btn.ghost{border-col
 <section id="whatif" hidden>
   <div class="card">
     <h2 style="font-size:17px">What-if</h2>
-    <p class="hint">Change a number, then replay your whole log. Assumed rule: take an offer if net $/hr clears the hour floor and (net $/mile clears the higher of the mile floor and a ramp, or the payout hits the big-offer cutoff). The ramp slides from RampLow at 50% acceptance to RampTop at 100%. If your shortcut works differently, tell me and I'll match it.</p>
+    <p class="hint">Change a number, then replay your whole log with the shortcut rule: an offer needs to beat the $/mile and $/hour bars, which slide from base to floor between the ramp low and ramp top acceptance rates. Changes here are not saved.</p>
     <div class="fields" id="wfields" style="margin-top:12px"></div>
-    <div class="row"><button class="btn" id="runWf">Replay my log</button><button class="btn go" id="useWf">Use these settings</button></div>
+    <div class="row"><button class="btn" id="runWf">Replay my log</button></div>
   </div>
   <div id="wfout"></div>
 </section>
 
 <section id="earn" hidden>
+  <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card"><h2 style="font-size:17px">Monthly statements</h2>
-    <label id="drop3" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop your DoorDash statement PDFs here, or tap to choose<input type="file" id="stmFile" accept=".pdf" multiple hidden><small style="display:block;color:var(--mut);margin-top:4px">Reads each month's total and payout count in your browser. Each month also sets your real pay in My setup.</small></label>
+    <label id="drop3" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop your DoorDash statement PDFs here, or tap to choose<input type="file" id="stmFile" accept=".pdf" multiple hidden><small style="display:block;color:var(--mut);margin-top:4px">Reads each month's total and payout count in your browser. Each month also sets your real pay.</small></label>
     <textarea id="stmTxt" placeholder="Or paste a statement's text here" style="min-height:70px;margin-top:10px"></textarea>
     <div class="row"><button class="btn ghost" id="stmPaste">Read pasted text</button></div></div>
   <div id="earnOut"></div>
 </section>
 
 <section id="hist" hidden>
+  <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card"><h2 style="font-size:17px">DoorDash archive</h2>
-    <label id="drop2" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop data_archive.zip here or tap to choose<input type="file" id="file3" accept=".zip,.csv" hidden><small style="display:block;color:var(--mut);margin-top:4px">Only the delivery file is read, inside your browser. Your personal info file is ignored and never saved. Pay and miles are estimated from your settings. Enter real monthly totals in My setup to correct them.</small></label></div>
+    <label id="drop2" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop data_archive.zip here or tap to choose<input type="file" id="file3" accept=".zip,.csv" hidden><small style="display:block;color:var(--mut);margin-top:4px">Only the delivery file is read, inside your browser. Your personal info file is ignored and never saved. Pay and miles are estimated from your settings. Drop your statement PDFs in Earn to correct them.</small></label></div>
   <div id="histOut"></div>
 </section>
 
 <section id="sync" hidden>
+  <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card">
     <h2 style="font-size:17px">Handoff</h2>
     <p class="hint">One file holds your settings and log so you can move between AIs or devices.</p>
     <div class="row"><button class="btn" id="exp">Export handoff file</button><button class="btn ghost" id="cpBrief">Copy AI brief</button><label class="btn ghost" style="color:var(--tx)">Import file<input type="file" id="file2" accept=".json,.csv,.txt" hidden></label></div>
     <p class="hint">The AI brief is plain text with your rules, columns, settings and log. Paste it into any AI to continue.</p>
   </div>
-  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">1. In My setup, tap Download settings.json and save it in iCloud Drive &gt; Shortcuts.<br>2. In the shortcut: Get File (settings.json), Get Dictionary from Input, then Get Dictionary Value for mpg, wear, gas, rampTop, rampLow, floorMile, floorHour and bigCut.<br>3. After each offer, append one line to offers.txt: date,time,zone,payout,miles,items,minutes,verdict,choice. Upload that file in the Log tab.</p></div>
+  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">Run the analyzer from the Scoreboard. To bring offers back: have the shortcut copy its log row, then tap Paste copied rows in Log, or pick offers.txt there. A web app on iPhone cannot read your Shortcuts folder by itself.</p></div>
   <div class="card" style="text-align:center"><img id="ico" alt="Hustle HQ app icon" width="120" height="120" style="border-radius:26px"><p class="hint">App icon. Press and hold to save it.</p></div>
 </main>
 <div id="toast" role="status"></div>
 
 <script>
 const $=s=>document.querySelector(s);
-const DEF={accept:75,estPay:7,estMph:20,mpg:25,wear:0.10,gas:4.80,rampTop:2.0,rampLow:1.0,floorMile:1.0,floorHour:15,bigCut:25,taxRate:0.70};
-const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"RampTop",rampLow:"RampLow",floorMile:"Floor $/mile",floorHour:"Floor $/hour",bigCut:"Big-offer cutoff ($)",taxRate:"Mileage deduction rate ($/mi)"};
+function menu(o){$("#nav").classList.toggle("open",o);$("#scrim").classList.toggle("on",o);$("#menuBtn").setAttribute("aria-expanded",o)}
+$("#menuBtn").onclick=()=>menu(!$("#nav").classList.contains("open"));$("#scrim").onclick=()=>menu(false);
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>menu(false)));
+const CFG={shortcutName:"DoorDash Offer Analyzer",shortcutLink:"",appUrl:""};
+const DEF={accept:89,estPay:7,estMph:20,mpg:17.5,wear:0.12,gas:5.75,rampTop:90,rampLow:85,floorMile:0.75,floorHour:10,baseMile:1.5,baseHour:18,bigItems:3,bigMile:2,bigHour:20,emergency:80,taxRate:0.70};
+const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"Ramp top (% acceptance)",rampLow:"Ramp low (% acceptance)",floorMile:"Floor $/mile",floorHour:"Floor $/hour",baseMile:"Base $/mile",baseHour:"Base $/hour",bigItems:"Big order: items over",bigMile:"Big order $/mile",bigHour:"Big order $/hour",emergency:"Emergency rate (%)",taxRate:"Mileage deduction rate ($/mi)"};
 let S={...DEF},store=null,uid=null,isDemo=false;
 const num=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?0:n};
 const $f=(n,d=2)=>"$"+n.toFixed(d);
@@ -173,7 +204,7 @@ function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");setT
 // tabs
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["dash","calc","setup","whatif","log","earn","hist","sync"].forEach(id=>$("#"+id).hidden=id!==b.dataset.t);if(b.dataset.t==="whatif")drawWf()});
+  ["dash","calc","whatif","log","earn","hist","sync","settings"].forEach(id=>$("#"+id).hidden=id!==b.dataset.t);if(b.dataset.t==="whatif")drawWf()});
 
 // storage: account db when available, else this browser only
 async function initStore(){
@@ -203,7 +234,11 @@ $("#dlSet").onclick=async()=>{readFields();const data=JSON.stringify(S,null,2);
 
 // parse
 function parse(text){
-  const L=text.trim().split(/\r?\n/).filter(Boolean);if(L.length<2)return[];
+  const L=text.trim().split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  if(L.length&&L[0].startsWith("|"))return L.filter(l=>l.startsWith("|")).map(l=>l.split("|").slice(1,-1).map(x=>x.trim())).filter(c=>c[0]&&!/^[-: ]+$/.test(c[0])&&c[0].toLowerCase()!=="date").map(c=>{
+    const dt=c[0].split(/\s+/),m=num(c[2]),it=num(c[3]),net=num(c[5]),hr=num(c[6]);
+    return{date:dt[0],time:dt[1]||"",zone:"",payout:c[1],miles:c[2],items:c[3],permile:c[4],net:c[5],hourly:c[6],verdict:c[7],rate:c[8],choice:c[9]||"",slack:c[10]||"",minutes:String(hr>0&&net>0?+(net/hr*60).toFixed(1):+(10+m*2.5+it*2).toFixed(1))}});
+  if(L.length<2)return[];
   const H=L[0].split(",").map(h=>h.trim().toLowerCase());
   return L.slice(1).map(l=>{const c=l.split(","),o={};H.forEach((h,i)=>o[h]=(c[i]||"").trim());return o})}
 const yes=v=>/accept|take|yes|worth|good|go/i.test(v||"")&&!/decline|pass|no\b/i.test(v||"");
@@ -212,9 +247,9 @@ let rows=[];
 
 function analyze(data){
   showCheck(data);data=adjust(data);rows=data;renderEarn();const n=data.length;
-  if(!n){$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;return}
+  if(!n){renderGame([],[]);$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;return}
   const gasOf=r=>(S.zoneGas&&S.zoneGas[r.zone])||S.gas;
-  const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),net=p-m*(gasOf(r)/S.mpg+S.wear);
+  const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),net=("net" in r&&r.net!=="")?num(r.net):p-m*(gasOf(r)/S.mpg+S.wear);
     return{...r,p,m,min,net,v:yes(r.verdict),t:took(r.choice)}});
   const acc=R.filter(r=>r.t),hrs=acc.reduce((a,r)=>a+r.min,0)/60;
   const pay=acc.reduce((a,r)=>a+r.p,0),mi=acc.reduce((a,r)=>a+r.m,0),net=acc.reduce((a,r)=>a+r.net,0);
@@ -247,7 +282,7 @@ function analyze(data){
   const L=[["Rookie",0],["Grinder",25],["Operator",100],["Hustler",300],["Legend",800]];
   let i=0;L.forEach((l,j)=>{if(n>=l[1])i=j});
   const nx=L[i+1];$("#lvl").textContent=L[i][0]+" · "+n+" offers";
-  $("#xp").style.width=(nx?100*(n-L[i][1])/(nx[1]-L[i][1]):100)+"%";
+  $("#xp").style.width=(nx?100*(n-L[i][1])/(nx[1]-L[i][1]):100)+"%";renderGame(R,RL);
 }
 function showCheck(d){const el=$("#check");if(!d.length){el.innerHTML="";return}
  const out=["payout","miles","items","minutes"].map(k=>{if(!(k in d[0]))return`<tr><td>${k}</td><td class="bad">column missing</td><td></td></tr>`;
@@ -255,23 +290,24 @@ function showCheck(d){const el=$("#check");if(!d.length){el.innerHTML="";return}
   const t=f&&!w?"float":w&&!f?"whole numbers":"mixed float and whole";
   return`<tr><td>${k}</td><td>${f+w?t:"no numbers"}</td><td class="${bad.length?"bad":"good"}">${bad.length?bad.length+" bad (rows "+bad.slice(0,5).join(", ")+")":"all clean"}</td></tr>`}).join("");
  el.innerHTML=`<table class="s"><tr><th>Column</th><th>Type</th><th>Check</th></tr>${out}</table>`}
-const ramp=(P,rate)=>P.rampLow+(P.rampTop-P.rampLow)*Math.min(1,Math.max(0,(rate-50)/50));
-function verdict(r,P,rate){const per=((P.zoneGas&&P.zoneGas[r.zone])||P.gas)/P.mpg+P.wear,p=num(r.payout),m=num(r.miles),h=Math.max(1,num(r.minutes))/60,net=p-m*per,hr=net/h,mi=m?net/m:net;
- return{ok:hr>=P.floorHour&&(mi>=Math.max(P.floorMile,ramp(P,rate))||p>=P.bigCut),net,h}}
+const ramp=(P,rate)=>Math.min(1,Math.max(0,(P.rampTop-rate)/(P.rampTop-P.rampLow)));
+function verdict(r,P,rate){const per=((P.zoneGas&&P.zoneGas[r.zone])||P.gas)/P.mpg+P.wear,p=num(r.payout),m=num(r.miles),it=num(r.items),mn=num(r.minutes)>0?num(r.minutes):10+m*2.5+it*2,h=mn/60,net=p-m*per;
+ const T=ramp(P,rate),big=it>P.bigItems,mb=big?P.bigMile:P.baseMile,hb=big?P.bigHour:P.baseHour,reqM=mb-T*(mb-P.floorMile),reqH=hb-T*(hb-P.floorHour),pm=m?p/m:p,hr=net/h;
+ return{ok:(pm>reqM&&hr>reqH)||(rate<P.emergency&&net>0),net,h,mn,reqM,reqH,pm,hr}}
 function drawWf(){$("#wfields").innerHTML=Object.keys(DEF).map(k=>`<label>${LBL[k]}<input inputmode="decimal" data-w="${k}" value="${S[k]}"></label>`).join("")}
 function draft(){const D={...S};document.querySelectorAll("[data-w]").forEach(i=>D[i.dataset.w]=num(i.value));return D}
 $("#runWf").onclick=()=>{const D=draft();if(!rows.length){$("#wfout").innerHTML='<div class="card"><p class="hint">Load a log first.</p></div>';return}
- const A=rows.map(r=>({r,a:verdict(r,S,S.accept),b:verdict(r,D,D.accept)}));
+ const A=rows.map(r=>({r,a:verdict(r,S,num(r.rate)||S.accept),b:verdict(r,D,num(r.rate)||D.accept)}));
  const sum=k=>{const y=A.filter(x=>x[k].ok),net=y.reduce((s,x)=>s+x[k].net,0),h=y.reduce((s,x)=>s+x[k].h,0);return{n:y.length,net,hr:h?net/h:0}};
  const a=sum("a"),b=sum("b"),fl=A.filter(x=>x.a.ok!==x.b.ok),d=b.net-a.net;
  $("#wfout").innerHTML=`<div class="card"><h2 style="font-size:17px">Replay results</h2><p class="hint">Acceptance rate used: ${num(S.accept)}% now, ${num(D.accept)}% in your change. Assumes you follow each verdict.</p><div class="wrap"><table><tr><th></th><th>Current</th><th>Your change</th></tr><tr><td>Offers you'd take</td><td>${a.n}</td><td>${b.n}</td></tr><tr><td>Net total</td><td>${$f(a.net,0)}</td><td>${$f(b.net,0)}</td></tr><tr><td>Net $/hr</td><td>${$f(a.hr)}</td><td>${$f(b.hr)}</td></tr></table></div><p class="${d>=0?"good":"bad"}" style="margin:10px 0 0"><b>${fl.length} verdicts flipped, ${d>=0?"+":"-"}${$f(Math.abs(d),0)} net</b></p></div>`+(fl.length?`<div class="card"><h2 style="font-size:17px">Flipped offers</h2><div class="wrap"><table><tr><th>Offer</th><th>Payout</th><th>Miles</th><th>Now</th><th>Change</th></tr>${fl.slice(0,12).map(x=>`<tr><td>${esc(x.r.date||"")} ${esc(x.r.zone||"")}</td><td>${$f(x.a.net+num(x.r.miles)*(S.gas/S.mpg+S.wear))}</td><td>${num(x.r.miles)}</td><td>${x.a.ok?"Take":"Pass"}</td><td class="${x.b.ok?"good":"bad"}">${x.b.ok?"Take":"Pass"}</td></tr>`).join("")}</table></div></div>`:"")};
-$("#useWf").onclick=async()=>{S={...S,...draft()};drawFields();await put("settings",S);toast("Settings updated")};
+
 async function save(name,data){try{const d=await claude.use("downloads");if(d){await d.save({filename:name,data});return}}catch(e){}try{await navigator.clipboard.writeText(data);toast("Copied to clipboard")}catch(e){toast("Save not available here")}}
-function brief(){return`HUSTLE HQ HANDOFF\nApp: DoorDash offer analyzer. An iOS Shortcut decides offers live and logs one CSV row per offer; this web page analyzes the log, holds settings and does what-if replay.\nLog columns: date,time,zone,payout,miles,items,minutes,verdict,choice. Numbers: payout and miles are decimals.\nRule used by the page: net = payout - miles*(gas/mpg+wear). Take if net/hr>=floorHour and (net/mile>=max(floorMile, ramp) or payout>=bigCut). ramp goes from rampLow at 50% acceptance to rampTop at 100%.\nSettings: ${JSON.stringify(S)}`}
+function brief(){return`HUSTLE HQ HANDOFF\nApp: DoorDash offer analyzer. An iOS Shortcut decides offers live and logs one pipe-table row per offer; this web page analyzes the log, holds settings and does what-if replay.\nLog columns: Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack.\nRule used by the page: net = payout - miles*(gas/mpg+wear). T = clamp((rampTop-rate)/(rampTop-rampLow),0..1). Bars slide from base to floor by T (big orders use bigMile/bigHour when items>bigItems). Take if payout/mile>reqMile and net/hr>reqHour, or if rate<emergency and net>0.\nSettings: ${JSON.stringify(S)}`}
 $("#exp").onclick=()=>save("hustle-handoff.json",JSON.stringify({app:"Hustle HQ",version:1,settings:S,csv:$("#csv").value,brief:brief()},null,2));
 $("#cpBrief").onclick=async()=>{try{await navigator.clipboard.writeText(brief()+"\n\nLOG:\n"+$("#csv").value);toast("AI brief copied")}catch(e){toast("Copy blocked")}};
 async function ingest(t){let j=null;try{j=JSON.parse(t)}catch(e){}
- if(j&&(j.settings||j.csv!==undefined)){if(j.settings){S={...DEF,...j.settings};drawFields();await put("settings",S)}
+ if(j&&(j.settings||j.csv!==undefined)){if(j.settings){S={...DEF,monthly:j.settings.monthly||{},zoneGas:j.settings.zoneGas||{}};drawFields();await put("settings",S)}
   if(j.csv!==undefined){$("#csv").value=j.csv;await put("log",{csv:j.csv,v:1});analyze(parse(j.csv))}toast("Handoff imported");return}
  const HDR="date,time,zone,payout,miles,items,minutes,verdict,choice";let L=t.trim().split(/\r?\n/).filter(Boolean);if(L.length&&/^\s*\d/.test(L[0]))L.unshift(HDR);
  if(L.length>1){const old=($("#csv").value||"").trim().split(/\r?\n/).filter(Boolean),have=new Set(old),add=L.slice(1).filter(x=>!have.has(x)),out=[old.length?old[0]:L[0],...old.slice(1),...add].join("\n");$("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1});toast(add.length+" new rows added")}else toast("Could not read that file")}
@@ -346,10 +382,11 @@ $("#c_r").onchange=()=>{S.accept=num($("#c_r").value);setAcc();put("settings",S)
 const dz=$("#drop");["dragover","dragenter"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.borderColor=""}));dz.addEventListener("drop",async e=>{const f=e.dataTransfer.files[0];if(f)await route(f)});
 ["file","file2"].forEach(id=>$("#"+id).onchange=async e=>{const f=e.target.files[0];if(f){await route(f);e.target.value=""}});
 $("#ico").src="icon-180.png";$("#hdrIco").src="icon-180.png";
-$("#c_go").onclick=()=>{const r={payout:$("#c_p").value,miles:$("#c_m").value,minutes:$("#c_t").value,zone:$("#c_z").value.trim()},rate=num($("#c_r").value);
- if(!num(r.payout)||!num(r.minutes)){toast("Enter payout and minutes");return}
- const v=verdict(r,S,rate),m=num(r.miles),hr=v.net/v.h,mi=m?v.net/m:v.net,need=Math.max(S.floorMile,ramp(S,rate));
- $("#c_out").innerHTML=`<div class="card" style="text-align:center"><div class="num ${v.ok?"good":"bad"}" style="font-size:56px">${v.ok?"TAKE":"PASS"}</div><div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(v.net)}</div><span>Net after car</span></div><div class="stat"><div class="num money">${$f(hr)}</div><span>Net $/hr (floor ${$f(S.floorHour)})</span></div><div class="stat"><div class="num money">${$f(mi)}</div><span>Net $/mile (need ${$f(need)})</span></div><div class="stat"><div class="num">${$f(S.bigCut,0)}</div><span>Big-offer cutoff</span></div></div></div>`};
+$("#c_go").onclick=()=>{const g=num($("#c_g").value);if(g>0&&g!==S.gas){S.gas=g;put("settings",S)}
+ const r={payout:$("#c_p").value,miles:$("#c_m").value,items:$("#c_i").value,minutes:$("#c_t").value},rate=num($("#c_r").value);
+ if(!num(r.payout)||!num(r.miles)){toast("Enter payout and miles");return}
+ const v=verdict(r,S,rate);
+ $("#c_out").innerHTML=`<div class="card" style="text-align:center"><div class="num ${v.ok?"good":"bad"}" style="font-size:56px">${v.ok?"TAKE IT":"SKIP"}</div><div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(v.net)}</div><span>Net after car</span></div><div class="stat"><div class="num money">${$f(v.hr)}</div><span>Net $/hr (need ${$f(v.reqH)})</span></div><div class="stat"><div class="num money">${$f(v.pm)}</div><span>Payout $/mile (need ${$f(v.reqM)})</span></div><div class="stat"><div class="num">${Math.round(v.mn)}</div><span>Minutes</span></div></div></div>`};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 $("#load").onclick=async()=>{const d=parse($("#csv").value);if(!d.length){toast("Need a header row plus offers");return}
@@ -362,11 +399,43 @@ $("#demo").onclick=()=>{const Z=["Vista","Oceanside","Carlsbad","San Marcos"],o=
     o.push(`2026-10-${10+i%14},12:${10+i},${Z[i%4]},${p},${m},${1+i%4},${Math.round(10+m*3.2)},${v},${c=="Accept"?"Accepted":c=="Decline"?"Declined":c}`)}
   isDemo=true;analyze(parse(o.join("\n")));toast("Demo data, not saved");document.querySelector('[data-t="dash"]').click()};
 
+let PER="day",LG=[[],[]];
+const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+function keyOf(s,p){s=(s||"").slice(0,10);if(p==="day")return s;if(p==="month")return s.slice(0,7);if(p==="year")return s.slice(0,4);const d=new Date(s+"T12:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d)}
+function renderGame(R,RL){LG=[R,RL];
+ const acc=R.filter(r=>r.t&&/^\d{4}-\d\d-\d\d/.test(r.date||"")),G={},z=()=>({p:0,n:0,c:0,m:0});
+ acc.forEach(r=>{const g=G[keyOf(r.date,PER)]=G[keyOf(r.date,PER)]||z();g.p+=r.p;g.n+=r.net;g.c++;g.m+=r.min});
+ const now=keyOf(iso(new Date()),PER),ks=Object.keys(G).sort().reverse().slice(0,PER==="day"?10:PER==="week"?8:12);if(!ks.includes(now))ks.unshift(now);
+ const cur=G[now]||z(),lab={day:"Today",week:"This week",month:"This month",year:"This year"}[PER],hh=g=>g.m?$f(g.n/(g.m/60)):"--";
+ $("#earnBig").innerHTML=`<div class="grid"><div class="stat"><div class="num money">${$f(cur.n,0)}</div><span>${lab} net</span></div><div class="stat"><div class="num">${$f(cur.p,0)}</div><span>Gross</span></div><div class="stat"><div class="num">${cur.c}</div><span>Offers taken</span></div><div class="stat"><div class="num">${hh(cur)}</div><span>Net $/hr</span></div></div>`;
+ $("#earnTbl").innerHTML=`<table><tr><th>${PER==="week"?"Week of":"Period"}</th><th>Gross</th><th>Net</th><th>Taken</th><th>Net $/hr</th></tr>`+ks.map(k=>{const g=G[k]||z();return`<tr><td>${k}</td><td>${$f(g.p)}</td><td>${$f(g.n)}</td><td>${g.c}</td><td>${hh(g)}</td></tr>`}).join("")+`</table>`;
+ const t=iso(new Date()),fol=RL.filter(r=>(r.date||"").slice(0,10)===t&&r.v===r.t).length,dn={};
+ acc.forEach(r=>{const k=r.date.slice(0,10);dn[k]=(dn[k]||0)+r.net});
+ const past=Object.keys(dn).filter(k=>k!==t).map(k=>dn[k]),avg=past.length?past.reduce((a,b)=>a+b,0)/past.length:50,tn=dn[t]||0;
+ let st=0,best=0,run=0;RL.forEach(r=>{if(r.v===r.t){run++;best=Math.max(best,run)}else run=0});for(let i=RL.length-1;i>=0&&RL[i].v===RL[i].t;i--)st++;
+ const q=(l,a,b,f)=>`<div style="margin:12px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${l}</span><b>${f?$f(a,0)+" / "+$f(b,0):Math.min(a,b)+" / "+b}</b></div><div class="bar"><i style="width:${Math.min(1,a/b)*100}%"></i></div></div>`;
+ const fp=RL.length?RL.filter(r=>r.v===r.t).length/RL.length:0,life=acc.reduce((a,r)=>a+r.net,0);
+ const B=[["25 offers",RL.length>=25],["10 in a row",best>=10],["85% follow rate",RL.length>=20&&fp>=.85],["$1,000 net",life>=1000]];
+ $("#quest").innerHTML=`<h2 style="font-size:17px">Today's quests</h2><p class="hint">Streak: ${st} followed in a row. Best: ${best}.</p>`+q("Follow the call 5 times",fol,5)+q("Beat your average day",tn,Math.max(avg,1),1)+q("10 in a row",st,10)+`<div>${B.map(b=>`<span class="chip ${b[1]?"on":""}">${b[0]}</span>`).join("")}</div>`}
+$("#seg").onclick=e=>{const b=e.target.closest("button");if(!b)return;PER=b.dataset.p;document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));renderGame(LG[0],LG[1])};
+$("#runSc").onclick=()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(CFG.shortcutName)};
+$("#getSc").onclick=()=>{CFG.shortcutLink?location.href=CFG.shortcutLink:toast("Add your iCloud link to CFG in index.html")};
+const HDRP="| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |\n|---|---|---|---|---|---|---|---|---|---|---|";
+async function addRow(l){const v=($("#csv").value||"").trim();if(v.split(/\r?\n/).some(x=>x.trim()===l.trim())){toast("Already logged");return}
+ $("#csv").value=(v||HDRP)+"\n"+l.trim();isDemo=false;analyze(parse($("#csv").value));await put("log",{csv:$("#csv").value,v:1});toast("Offer logged")}
+$("#pasteRows").onclick=async()=>{try{await ingest(await navigator.clipboard.readText())}catch(e){toast("Paste blocked")}};
+const PGS=[["log","Log","Paste or load your offers log"],["earn","Earnings","Read your monthly statements"],["hist","History","Load your DoorDash data archive"],["sync","Handoff","Export or import for another AI"]];
+let PIN={};try{PIN=JSON.parse(localStorage.getItem("hh_pins")||"{}")}catch(e){}
+function applyPins(){PGS.forEach(p=>{const b=document.querySelector('nav button[data-t="'+p[0]+'"]');if(b)b.hidden=!PIN[p[0]]})}
+$("#pgList").innerHTML=PGS.map(p=>`<div class="pg"><button class="pgb" data-open="${p[0]}">${p[1]}<small>${p[2]}</small></button><label class="sw"><input type="checkbox" data-pin="${p[0]}" aria-label="Show ${p[1]} in menu"${PIN[p[0]]?" checked":""}><span></span></label></div>`).join("");
+document.addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){const b=document.querySelector('nav button[data-t="'+o.dataset.open+'"]');if(b)b.click()}});
+document.addEventListener("change",e=>{const i=e.target.closest("[data-pin]");if(!i)return;PIN[i.dataset.pin]=i.checked;try{localStorage.setItem("hh_pins",JSON.stringify(PIN))}catch(x){}applyPins()});
+applyPins();
 (async()=>{
-  drawFields();
+  drawFields();renderGame([],[]);
   await initStore();
-  const s=await get("settings");if(s){S={...DEF,...s};drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();
+  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};drawFields()}setAcc();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();$("#c_g").value=S.gas;{const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}}
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
