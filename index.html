@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hustle HQ</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#04070d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Hustle HQ">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Sora:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04070d;--panel:#0b111b;--line:#1e2836;--tx:#dfe7ef;--mut:#8392a5;--g1:#10161f;--g2:#2b3647;--g3:#5d6b80;--gold:#19e3ff;--go:#2bff88;--no:#ff4d6d;--ink:#04070d;color-scheme:dark;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+table.s td{white-space:normal}.row label.btn{margin:0}.btn.go{background:var(--go)}
+:root[data-theme="dark"]{--bg:#04070d}
+*{box-sizing:inherit}html,body{margin:0}
+body{background:var(--bg) linear-gradient(var(--line) 1px,transparent 1px) 0 0/100% 36px;background-blend-mode:soft-light;color:var(--tx);font:16px/1.5 Sora,system-ui,sans-serif;min-height:100vh}
+h1,h2,.num{font-family:"Chakra Petch",system-ui,sans-serif;margin:0}
+main{max-width:760px;margin:0 auto;padding:16px 16px 80px}
+header{display:flex;justify-content:space-between;align-items:center;margin:8px 0 16px}
+h1{font-size:26px;letter-spacing:.5px}
+.lvl{font-size:13px;color:var(--mut);text-align:right}
+.xp{height:6px;width:120px;background:var(--line);border-radius:9px;margin-top:4px;overflow:hidden}
+.xp i{display:block;height:100%;background:var(--gold);width:0;transition:width .6s}
+nav{display:flex;gap:6px;background:var(--panel);padding:5px;border-radius:14px;margin-bottom:18px}
+nav button{flex:1 0 auto;border:0;background:none;color:var(--mut);font:600 12px Sora,sans-serif;padding:10px 11px;border-radius:10px;cursor:pointer}
+nav button[aria-selected=true]{background:var(--gold);color:#1d1740}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+section[hidden]{display:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px}
+.hero{display:flex;gap:18px;align-items:center}
+.ring{width:132px;height:132px;flex:none;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font:700 32px "Chakra Petch",sans-serif}
+.hero p{margin:4px 0 0;color:var(--mut);font-size:14px}
+.hero h2{font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:600px){.grid{grid-template-columns:repeat(4,1fr)}}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat .num{font-size:24px;font-weight:700}
+.stat span{color:var(--mut);font-size:13px}
+.money{color:var(--gold)}
+textarea{width:100%;min-height:120px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:12px;font:13px/1.4 ui-monospace,Menlo,monospace;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btn{border:0;border-radius:11px;padding:11px 16px;font:600 14px Sora,sans-serif;cursor:pointer;background:var(--gold);color:#1d1740}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--tx)}
+.hint{color:var(--mut);font-size:13px;margin:6px 0 0}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mut);font-weight:600}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+label{display:block;font-size:13px;color:var(--mut)}
+input{width:100%;margin-top:4px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:16px Sora,sans-serif}
+.good{color:var(--go)}.bad{color:var(--no)}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--gold);color:#1d1740;padding:10px 16px;border-radius:12px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none}
+#toast.on{opacity:1}
+input,textarea{background:var(--g1);border-color:var(--g2)}.btn.ghost{border-color:var(--g2)}th{color:var(--g3)}.card,.stat{background:linear-gradient(180deg,var(--g1),var(--panel));border-color:var(--g2)}nav{overflow-x:auto;border:1px solid var(--g2)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+<main>
+<header>
+  <h1><img id="hdrIco" alt="" width="30" height="30" style="vertical-align:-6px;margin-right:8px;border-radius:8px">Hustle HQ</h1>
+  <div class="lvl"><div id="lvl">Rookie</div><div class="xp"><i id="xp"></i></div></div>
+</header>
+<nav role="tablist">
+  <button role="tab" aria-selected="true" data-t="dash">Scoreboard</button>
+  <button role="tab" aria-selected="false" data-t="calc">Check</button>
+  <button role="tab" aria-selected="false" data-t="setup">My setup</button>
+  <button role="tab" aria-selected="false" data-t="whatif">What-if</button>
+  <button role="tab" aria-selected="false" data-t="log">Log</button>
+  <button role="tab" aria-selected="false" data-t="earn">Earn</button>
+  <button role="tab" aria-selected="false" data-t="hist">History</button>
+  <button role="tab" aria-selected="false" data-t="sync">Handoff</button>
+</nav>
+
+<section id="dash">
+  <div class="card hero">
+    <div class="ring"><svg width="132" height="132" viewBox="0 0 132 132"><circle cx="66" cy="66" r="56" fill="none" stroke="var(--line)" stroke-width="12"/><circle id="arc" cx="66" cy="66" r="56" fill="none" stroke="var(--gold)" stroke-width="12" stroke-linecap="round" stroke-dasharray="352" stroke-dashoffset="352" style="transition:stroke-dashoffset .9s"/></svg><b id="follow">--</b></div>
+    <div><h2>Followed the call</h2><p id="followTxt">Load your log to see how often your choices matched the shortcut's verdict.</p></div>
+  </div>
+  <div class="grid" id="stats"></div>
+  <p class="hint" id="estNote"></p>
+  <div class="card" style="margin-top:14px"><h2 style="font-size:17px">Verdict vs. what you did</h2><div class="wrap" id="matrix"><p class="hint">Nothing logged yet. Open the Log tab.</p></div></div>
+  <div class="card"><h2 style="font-size:17px">Zones that pay</h2><div class="wrap" id="zones"><p class="hint">Add a zone column to the log to see this.</p></div></div>
+  <div class="card"><h2 style="font-size:17px">By month</h2><div class="wrap" id="months"><p class="hint">Needs dates like 2026-10-24 in the log.</p></div></div>
+  <div class="card"><h2 style="font-size:17px">Best hours</h2><div class="wrap" id="hours"><p class="hint">Add a time column (like 12:40) to see this.</p></div></div>
+  <div class="card"><h2 style="font-size:17px">Tax summary</h2><div id="tax"><p class="hint">Accepted offers only. Based on the mileage rate in My setup.</p></div></div>
+</section>
+
+<section id="calc" hidden><div class="card"><h2 style="font-size:17px">Check an offer</h2><p class="hint">Same rule as What-if, using your saved settings.</p><div class="fields" style="margin-top:12px"><label>Payout ($)<input inputmode="decimal" id="c_p"></label><label>Miles<input inputmode="decimal" id="c_m"></label><label>Items<input inputmode="decimal" id="c_i"></label><label>Est. minutes<input inputmode="decimal" id="c_t"></label><label>Zone (optional)<input id="c_z"></label><label>Acceptance rate (%)<input inputmode="decimal" id="c_r" value="75"></label></div><p class="hint lr"></p><div class="row"><button class="btn" id="c_go">Get verdict</button></div></div><div id="c_out"></div></section>
+
+<section id="setup" hidden>
+  <div class="card">
+    <h2 style="font-size:17px">Your numbers</h2>
+    <p class="hint">Use the same values as your shortcut so the page and shortcut agree.</p>
+    <div class="fields" id="fields" style="margin-top:12px"></div>
+    <p class="hint lr"></p>
+    <label style="margin-top:12px">Gas price by zone (one per line, like Vista=4.95)<textarea id="zg" style="min-height:70px"></textarea></label>
+    <label style="margin-top:12px">Real monthly totals from your statements (like 2026-09=1450.25,812 for pay, miles)<textarea id="ma" style="min-height:70px"></textarea></label>
+    <div class="row"><button class="btn" id="saveSet">Save settings</button><button class="btn ghost" id="dlSet">Download settings.json</button></div>
+    <p class="hint">Put settings.json in iCloud Drive &gt; Shortcuts so the shortcut can read it.</p>
+  </div>
+</section>
+
+<section id="log" hidden>
+  <div class="card">
+    <h2 style="font-size:17px">Paste your offers log</h2>
+    <p class="hint">First row is the header: date,time,zone,payout,miles,items,minutes,verdict,choice</p>
+    <textarea id="csv" placeholder="2026-10-24,12:40,Vista,10.70,5.5,1,22,Accept,Accepted"></textarea>
+    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="clear">Clear</button></div>
+    <label id="drop" style="display:block;margin-top:12px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop offers.txt or data_archive.zip here, or tap to choose<input type="file" id="file" accept=".csv,.txt,.json,.zip" hidden><small style="display:block;color:var(--mut);margin-top:4px">New rows are added to your saved log. A missing header row is added for you.</small></label>
+    <div id="check" style="margin-top:12px"></div>
+    <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
+  </div>
+</section>
+<section id="whatif" hidden>
+  <div class="card">
+    <h2 style="font-size:17px">What-if</h2>
+    <p class="hint">Change a number, then replay your whole log. Assumed rule: take an offer if net $/hr clears the hour floor and (net $/mile clears the higher of the mile floor and a ramp, or the payout hits the big-offer cutoff). The ramp slides from RampLow at 50% acceptance to RampTop at 100%. If your shortcut works differently, tell me and I'll match it.</p>
+    <div class="fields" id="wfields" style="margin-top:12px"></div>
+    <div class="row"><button class="btn" id="runWf">Replay my log</button><button class="btn go" id="useWf">Use these settings</button></div>
+  </div>
+  <div id="wfout"></div>
+</section>
+
+<section id="earn" hidden>
+  <div class="card"><h2 style="font-size:17px">Monthly statements</h2>
+    <label id="drop3" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop your DoorDash statement PDFs here, or tap to choose<input type="file" id="stmFile" accept=".pdf" multiple hidden><small style="display:block;color:var(--mut);margin-top:4px">Reads each month's total and payout count in your browser. Each month also sets your real pay in My setup.</small></label>
+    <textarea id="stmTxt" placeholder="Or paste a statement's text here" style="min-height:70px;margin-top:10px"></textarea>
+    <div class="row"><button class="btn ghost" id="stmPaste">Read pasted text</button></div></div>
+  <div id="earnOut"></div>
+</section>
+
+<section id="hist" hidden>
+  <div class="card"><h2 style="font-size:17px">DoorDash archive</h2>
+    <label id="drop2" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop data_archive.zip here or tap to choose<input type="file" id="file3" accept=".zip,.csv" hidden><small style="display:block;color:var(--mut);margin-top:4px">Only the delivery file is read, inside your browser. Your personal info file is ignored and never saved. Pay and miles are estimated from your settings. Enter real monthly totals in My setup to correct them.</small></label></div>
+  <div id="histOut"></div>
+</section>
+
+<section id="sync" hidden>
+  <div class="card">
+    <h2 style="font-size:17px">Handoff</h2>
+    <p class="hint">One file holds your settings and log so you can move between AIs or devices.</p>
+    <div class="row"><button class="btn" id="exp">Export handoff file</button><button class="btn ghost" id="cpBrief">Copy AI brief</button><label class="btn ghost" style="color:var(--tx)">Import file<input type="file" id="file2" accept=".json,.csv,.txt" hidden></label></div>
+    <p class="hint">The AI brief is plain text with your rules, columns, settings and log. Paste it into any AI to continue.</p>
+  </div>
+  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">1. In My setup, tap Download settings.json and save it in iCloud Drive &gt; Shortcuts.<br>2. In the shortcut: Get File (settings.json), Get Dictionary from Input, then Get Dictionary Value for mpg, wear, gas, rampTop, rampLow, floorMile, floorHour and bigCut.<br>3. After each offer, append one line to offers.txt: date,time,zone,payout,miles,items,minutes,verdict,choice. Upload that file in the Log tab.</p></div>
+  <div class="card" style="text-align:center"><img id="ico" alt="Hustle HQ app icon" width="120" height="120" style="border-radius:26px"><p class="hint">App icon. Press and hold to save it.</p></div>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const DEF={accept:75,estPay:7,estMph:20,mpg:25,wear:0.10,gas:4.80,rampTop:2.0,rampLow:1.0,floorMile:1.0,floorHour:15,bigCut:25,taxRate:0.70};
+const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"RampTop",rampLow:"RampLow",floorMile:"Floor $/mile",floorHour:"Floor $/hour",bigCut:"Big-offer cutoff ($)",taxRate:"Mileage deduction rate ($/mi)"};
+let S={...DEF},store=null,uid=null,isDemo=false;
+const num=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?0:n};
+const $f=(n,d=2)=>"$"+n.toFixed(d);
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");setTimeout(()=>e.classList.remove("on"),1800)}
+
+// tabs
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
+  ["dash","calc","setup","whatif","log","earn","hist","sync"].forEach(id=>$("#"+id).hidden=id!==b.dataset.t);if(b.dataset.t==="whatif")drawWf()});
+
+// storage: account db when available, else this browser only
+async function initStore(){
+  try{
+    const u=await claude.use("user"),db=await claude.use("db");
+    if(u&&db){uid=await u.id();if(uid){store=db.collection("data/users/"+uid);}}
+  }catch(e){}
+}
+async function put(k,obj){
+  try{if(store){await store.doc(k).set(obj);return"account"}}catch(e){}
+  try{localStorage.setItem("hh_"+k,JSON.stringify(obj));return"browser"}catch(e){return null}
+}
+async function get(k){
+  try{if(store){const s=await store.doc(k).get();if(s.exists)return s.data()}}catch(e){}
+  try{const v=localStorage.getItem("hh_"+k);return v?JSON.parse(v):null}catch(e){return null}
+}
+
+// settings
+function fillZg(){const ma=$("#ma");if(ma)ma.value=Object.entries(S.monthly||{}).map(e=>e[0]+"="+e[1][0]+(e[1][1]?","+e[1][1]:"")).join("\n");const el=$("#zg");if(el)el.value=Object.entries(S.zoneGas||{}).map(e=>e.join("=")).join("\n")}
+function drawFields(){fillZg();
+  $("#fields").innerHTML=Object.keys(DEF).map(k=>`<label>${LBL[k]}<input inputmode="decimal" data-k="${k}" value="${S[k]}"></label>`).join("")}
+function readFields(){document.querySelectorAll("[data-k]").forEach(i=>S[i.dataset.k]=num(i.value));S.zoneGas={};($("#zg").value||"").split(/\n/).forEach(l=>{const p=l.split("=");if(p[0]&&num(p[1])>0)S.zoneGas[p[0].trim()]=num(p[1])});S.monthly={};($("#ma").value||"").split(/\n/).forEach(l=>{const p=l.split("="),v=(p[1]||"").split(",");if(/^\d{4}-\d\d$/.test((p[0]||"").trim())&&num(v[0])>0)S.monthly[p[0].trim()]=[num(v[0]),num(v[1])]});S.version=1}
+$("#saveSet").onclick=async()=>{readFields();const w=await put("settings",S);toast(w?"Settings saved":"Could not save");analyze(rows)};
+$("#dlSet").onclick=async()=>{readFields();const data=JSON.stringify(S,null,2);
+  try{const d=await claude.use("downloads");if(d){await d.save({filename:"settings.json",data});return}}catch(e){}
+  try{await navigator.clipboard.writeText(data);toast("Copied settings text")}catch(e){toast("Download not available here")}};
+
+// parse
+function parse(text){
+  const L=text.trim().split(/\r?\n/).filter(Boolean);if(L.length<2)return[];
+  const H=L[0].split(",").map(h=>h.trim().toLowerCase());
+  return L.slice(1).map(l=>{const c=l.split(","),o={};H.forEach((h,i)=>o[h]=(c[i]||"").trim());return o})}
+const yes=v=>/accept|take|yes|worth|good|go/i.test(v||"")&&!/decline|pass|no\b/i.test(v||"");
+const took=v=>/accept/i.test(v||"")&&!/declin/i.test(v||"");
+let rows=[];
+
+function analyze(data){
+  showCheck(data);data=adjust(data);rows=data;renderEarn();const n=data.length;
+  if(!n){$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;return}
+  const gasOf=r=>(S.zoneGas&&S.zoneGas[r.zone])||S.gas;
+  const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),net=p-m*(gasOf(r)/S.mpg+S.wear);
+    return{...r,p,m,min,net,v:yes(r.verdict),t:took(r.choice)}});
+  const acc=R.filter(r=>r.t),hrs=acc.reduce((a,r)=>a+r.min,0)/60;
+  const pay=acc.reduce((a,r)=>a+r.p,0),mi=acc.reduce((a,r)=>a+r.m,0),net=acc.reduce((a,r)=>a+r.net,0);
+  const RL=R.filter(r=>r.src!=="archive"),nl=RL.length,accL=RL.filter(r=>r.t).length,followed=RL.filter(r=>r.v===r.t).length,fp=nl?Math.round(100*followed/nl):0;
+  $("#follow").textContent=fp+"%";$("#arc").style.strokeDashoffset=352*(1-fp/100);
+  $("#followTxt").textContent=nl?followed+" of "+nl+" logged offers matched the verdict. "+(fp>=85?"Locked in.":"Room to tighten up."):"Archive rows have no verdicts. Log offers with the shortcut to see this.";$("#estNote").textContent=n>nl?(n-nl)+" deliveries come from your DoorDash archive, with estimated pay and miles.":"";
+  const st=[["Acceptance",nl?Math.round(100*accL/nl)+"%":"--"],["Gross",$f(pay,0),1],["Net after car",$f(net,0),1],["Net $/hr",hrs?$f(net/hrs):"--",1],["Net $/mile",mi?$f(net/mi):"--",1],["Offers",n],["Miles driven",mi.toFixed(0)],["Hours",hrs.toFixed(1)]];
+  $("#stats").innerHTML=st.map(s=>`<div class="stat"><div class="num ${s[2]?"money":""}">${s[1]}</div><span>${s[0]}</span></div>`).join("");
+  // matrix
+  const c=(v,t)=>RL.filter(r=>r.v===v&&r.t===t).length;
+  const hr=(arr)=>{const h=arr.reduce((a,r)=>a+r.min,0)/60;return h?$f(arr.reduce((a,r)=>a+r.net,0)/h):"--"};
+  const cell=(v,t)=>RL.filter(r=>r.v===v&&r.t===t);
+  $("#matrix").innerHTML=`<table><tr><th>Verdict / you</th><th>Offers</th><th>Net $/hr</th></tr>`+
+   [[true,true,"Said yes, you accepted","good"],[true,false,"Said yes, you declined","bad"],[false,true,"Said no, you accepted","bad"],[false,false,"Said no, you declined","good"]]
+   .map(x=>`<tr><td class="${x[3]}">${x[2]}</td><td>${c(x[0],x[1])}</td><td>${hr(cell(x[0],x[1]))}</td></tr>`).join("")+`</table>`;
+  // zones
+  const Z={};acc.forEach(r=>{const z=r.zone||"";if(!z)return;(Z[z]=Z[z]||[]).push(r)});
+  const zk=Object.keys(Z).sort((a,b)=>Z[b].reduce((x,r)=>x+r.net,0)/Math.max(1,Z[b].reduce((x,r)=>x+r.min,0))-Z[a].reduce((x,r)=>x+r.net,0)/Math.max(1,Z[a].reduce((x,r)=>x+r.min,0)));
+  $("#zones").innerHTML=zk.length?`<table><tr><th>Zone</th><th>Orders</th><th>Net $/hr</th><th>Net $/mi</th></tr>`+zk.map(z=>{const a=Z[z],m=a.reduce((x,r)=>x+r.m,0),nt=a.reduce((x,r)=>x+r.net,0);return`<tr><td>${esc(z)}</td><td>${a.length}</td><td>${hr(a)}</td><td>${m?$f(nt/m):"--"}</td></tr>`}).join("")+`</table>`:`<p class="hint">Add a zone column to the log to see this.</p>`;
+  // tax
+  const ded=mi*S.taxRate;
+  $("#tax").innerHTML=`<table><tr><td>Gross dash income</td><td>${$f(pay)}</td></tr><tr><td>Business miles</td><td>${mi.toFixed(1)}</td></tr><tr><td>Mileage deduction at ${$f(S.taxRate)}/mi</td><td>${$f(ded)}</td></tr><tr><td>Taxable after mileage</td><td>${$f(pay-ded)}</td></tr></table><p class="hint">Estimate from your log, not tax advice. Check the current IRS rate.</p>`;
+  LOGRATE=nl?Math.round(100*accL/nl):null;showLR();
+  const HB={};acc.forEach(r=>{const h=parseInt((r.time||"").split(":")[0]);if(isNaN(h))return;(HB[h]=HB[h]||[]).push(r)});
+  const hk=Object.keys(HB).map(Number).sort((a,b)=>a-b);
+  $("#hours").innerHTML=hk.length?`<table><tr><th>Hour</th><th>Orders</th><th>Net $/hr</th></tr>${hk.map(h=>{const a=HB[h],t=a.reduce((x,r)=>x+r.min,0)/60,n2=a.reduce((x,r)=>x+r.net,0);return`<tr><td>${h%12||12}${h<12?"am":"pm"}</td><td>${a.length}</td><td>${t?$f(n2/t):"--"}</td></tr>`}).join("")}</table>`:'<p class="hint">Add a time column (like 12:40) to see this.</p>';
+  const M={};acc.forEach(r=>{const k=(r.date||"").slice(0,7);if(!/^\d{4}-\d\d$/.test(k))return;(M[k]=M[k]||[]).push(r)});
+  $("#months").innerHTML=Object.keys(M).length?`<table><tr><th>Month</th><th>Orders</th><th>Gross</th><th>Miles</th><th>Net</th><th>Mileage deduction</th></tr>${Object.keys(M).sort().reverse().map(k=>{const a=M[k],g=a.reduce((x,r)=>x+r.p,0),m=a.reduce((x,r)=>x+r.m,0),nt=a.reduce((x,r)=>x+r.net,0);return`<tr><td>${k}</td><td>${a.length}</td><td>${$f(g)}</td><td>${m.toFixed(0)}</td><td>${$f(nt)}</td><td>${$f(m*S.taxRate)}</td></tr>`}).join("")}</table>`:'<p class="hint">Needs dates like 2026-10-24 in the log.</p>';
+  // level
+  const L=[["Rookie",0],["Grinder",25],["Operator",100],["Hustler",300],["Legend",800]];
+  let i=0;L.forEach((l,j)=>{if(n>=l[1])i=j});
+  const nx=L[i+1];$("#lvl").textContent=L[i][0]+" · "+n+" offers";
+  $("#xp").style.width=(nx?100*(n-L[i][1])/(nx[1]-L[i][1]):100)+"%";
+}
+function showCheck(d){const el=$("#check");if(!d.length){el.innerHTML="";return}
+ const out=["payout","miles","items","minutes"].map(k=>{if(!(k in d[0]))return`<tr><td>${k}</td><td class="bad">column missing</td><td></td></tr>`;
+  let f=0,w=0,bad=[];d.forEach((r,j)=>{const v=String(r[k]||"").trim();if(/^\$?-?\d+\.\d+$/.test(v))f++;else if(/^\$?-?\d+$/.test(v))w++;else bad.push(j+2)});
+  const t=f&&!w?"float":w&&!f?"whole numbers":"mixed float and whole";
+  return`<tr><td>${k}</td><td>${f+w?t:"no numbers"}</td><td class="${bad.length?"bad":"good"}">${bad.length?bad.length+" bad (rows "+bad.slice(0,5).join(", ")+")":"all clean"}</td></tr>`}).join("");
+ el.innerHTML=`<table class="s"><tr><th>Column</th><th>Type</th><th>Check</th></tr>${out}</table>`}
+const ramp=(P,rate)=>P.rampLow+(P.rampTop-P.rampLow)*Math.min(1,Math.max(0,(rate-50)/50));
+function verdict(r,P,rate){const per=((P.zoneGas&&P.zoneGas[r.zone])||P.gas)/P.mpg+P.wear,p=num(r.payout),m=num(r.miles),h=Math.max(1,num(r.minutes))/60,net=p-m*per,hr=net/h,mi=m?net/m:net;
+ return{ok:hr>=P.floorHour&&(mi>=Math.max(P.floorMile,ramp(P,rate))||p>=P.bigCut),net,h}}
+function drawWf(){$("#wfields").innerHTML=Object.keys(DEF).map(k=>`<label>${LBL[k]}<input inputmode="decimal" data-w="${k}" value="${S[k]}"></label>`).join("")}
+function draft(){const D={...S};document.querySelectorAll("[data-w]").forEach(i=>D[i.dataset.w]=num(i.value));return D}
+$("#runWf").onclick=()=>{const D=draft();if(!rows.length){$("#wfout").innerHTML='<div class="card"><p class="hint">Load a log first.</p></div>';return}
+ const A=rows.map(r=>({r,a:verdict(r,S,S.accept),b:verdict(r,D,D.accept)}));
+ const sum=k=>{const y=A.filter(x=>x[k].ok),net=y.reduce((s,x)=>s+x[k].net,0),h=y.reduce((s,x)=>s+x[k].h,0);return{n:y.length,net,hr:h?net/h:0}};
+ const a=sum("a"),b=sum("b"),fl=A.filter(x=>x.a.ok!==x.b.ok),d=b.net-a.net;
+ $("#wfout").innerHTML=`<div class="card"><h2 style="font-size:17px">Replay results</h2><p class="hint">Acceptance rate used: ${num(S.accept)}% now, ${num(D.accept)}% in your change. Assumes you follow each verdict.</p><div class="wrap"><table><tr><th></th><th>Current</th><th>Your change</th></tr><tr><td>Offers you'd take</td><td>${a.n}</td><td>${b.n}</td></tr><tr><td>Net total</td><td>${$f(a.net,0)}</td><td>${$f(b.net,0)}</td></tr><tr><td>Net $/hr</td><td>${$f(a.hr)}</td><td>${$f(b.hr)}</td></tr></table></div><p class="${d>=0?"good":"bad"}" style="margin:10px 0 0"><b>${fl.length} verdicts flipped, ${d>=0?"+":"-"}${$f(Math.abs(d),0)} net</b></p></div>`+(fl.length?`<div class="card"><h2 style="font-size:17px">Flipped offers</h2><div class="wrap"><table><tr><th>Offer</th><th>Payout</th><th>Miles</th><th>Now</th><th>Change</th></tr>${fl.slice(0,12).map(x=>`<tr><td>${esc(x.r.date||"")} ${esc(x.r.zone||"")}</td><td>${$f(x.a.net+num(x.r.miles)*(S.gas/S.mpg+S.wear))}</td><td>${num(x.r.miles)}</td><td>${x.a.ok?"Take":"Pass"}</td><td class="${x.b.ok?"good":"bad"}">${x.b.ok?"Take":"Pass"}</td></tr>`).join("")}</table></div></div>`:"")};
+$("#useWf").onclick=async()=>{S={...S,...draft()};drawFields();await put("settings",S);toast("Settings updated")};
+async function save(name,data){try{const d=await claude.use("downloads");if(d){await d.save({filename:name,data});return}}catch(e){}try{await navigator.clipboard.writeText(data);toast("Copied to clipboard")}catch(e){toast("Save not available here")}}
+function brief(){return`HUSTLE HQ HANDOFF\nApp: DoorDash offer analyzer. An iOS Shortcut decides offers live and logs one CSV row per offer; this web page analyzes the log, holds settings and does what-if replay.\nLog columns: date,time,zone,payout,miles,items,minutes,verdict,choice. Numbers: payout and miles are decimals.\nRule used by the page: net = payout - miles*(gas/mpg+wear). Take if net/hr>=floorHour and (net/mile>=max(floorMile, ramp) or payout>=bigCut). ramp goes from rampLow at 50% acceptance to rampTop at 100%.\nSettings: ${JSON.stringify(S)}`}
+$("#exp").onclick=()=>save("hustle-handoff.json",JSON.stringify({app:"Hustle HQ",version:1,settings:S,csv:$("#csv").value,brief:brief()},null,2));
+$("#cpBrief").onclick=async()=>{try{await navigator.clipboard.writeText(brief()+"\n\nLOG:\n"+$("#csv").value);toast("AI brief copied")}catch(e){toast("Copy blocked")}};
+async function ingest(t){let j=null;try{j=JSON.parse(t)}catch(e){}
+ if(j&&(j.settings||j.csv!==undefined)){if(j.settings){S={...DEF,...j.settings};drawFields();await put("settings",S)}
+  if(j.csv!==undefined){$("#csv").value=j.csv;await put("log",{csv:j.csv,v:1});analyze(parse(j.csv))}toast("Handoff imported");return}
+ const HDR="date,time,zone,payout,miles,items,minutes,verdict,choice";let L=t.trim().split(/\r?\n/).filter(Boolean);if(L.length&&/^\s*\d/.test(L[0]))L.unshift(HDR);
+ if(L.length>1){const old=($("#csv").value||"").trim().split(/\r?\n/).filter(Boolean),have=new Set(old),add=L.slice(1).filter(x=>!have.has(x)),out=[old.length?old[0]:L[0],...old.slice(1),...add].join("\n");$("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1});toast(add.length+" new rows added")}else toast("Could not read that file")}
+let STM={};
+const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+async function pdfText(f){const L=window.pdfjsLib;if(!L)throw 0;L.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";const d=await L.getDocument({data:await f.arrayBuffer()}).promise,p=await d.getPage(1),c=await p.getTextContent();return c.items.map(x=>x.str).join(" ")}
+function stmParse(t){const m=t.match(/(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4}) Statement/),a=t.match(/Total Payouts\s*\$([\d,]+\.\d\d)/),c=t.match(/Payouts \((\d+)\)/);return m&&a?{k:m[2]+"-"+String(MN.indexOf(m[1])+1).padStart(2,"0"),total:num(a[1]),n:c?+c[1]:0}:null}
+async function takeStm(items,paste){let got=0;for(const f of items){try{const s=stmParse(paste?f:await pdfText(f));if(s){STM[s.k]=s;got++}}catch(e){}}
+ if(!got){toast("Could not read a statement. Try pasting its text.");return}
+ S.monthly=S.monthly||{};Object.values(STM).forEach(s=>{S.monthly[s.k]=[s.total,(S.monthly[s.k]||[])[1]||0]});
+ await put("statements",{v:1,s:STM});await put("settings",S);fillZg();analyze(parse($("#csv").value));renderEarn();toast(got+" statement"+(got>1?"s":"")+" read")}
+function renderEarn(){const el=$("#earnOut");if(!el)return;const ks=Object.keys(STM).sort();if(!ks.length){el.innerHTML="";return}
+ const A=rows.filter(r=>r.src==="archive"),mm={};A.forEach(r=>{const k=(r.date||"").slice(0,7);(mm[k]=mm[k]||{n:0,m:0}).n++;mm[k].m+=num(r.minutes)});
+ let T=0,P=0,DN=0,HR=0;const tr=ks.map(k=>{const s=STM[k],a=mm[k]||{n:0,m:0},h=a.m/60;T+=s.total;P+=s.n;DN+=a.n;HR+=h;return[k,$f(s.total),s.n,a.n,a.n?$f(s.total/a.n):"--",h?$f(s.total/h):"--"]});
+ const wd=[0,0,0,0,0,0,0],DNm=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];A.forEach(r=>{const d=new Date((r.date||"")+"T12:00:00");if(!isNaN(d)&&STM[(r.date||"").slice(0,7)])wd[d.getDay()]++});
+ const pd=ks.filter(k=>(mm[k]||{n:0}).n>=30).map(k=>[k,STM[k].total/mm[k].n]).sort((a,b)=>b[1]-a[1]),wx=Math.max(...wd),hi=wd.indexOf(wx),lo=wd.indexOf(Math.min(...wd)),nt=[];
+ if(pd.length>1)nt.push(`Best pay per delivery: ${pd[0][0]} at ${$f(pd[0][1])}. Lowest: ${pd[pd.length-1][0]} at ${$f(pd[pd.length-1][1])}. The gap is what a better offer mix is worth.`);
+ if(DN)nt.push(`${DNm[hi]} is your busiest day with ${wd[hi]} deliveries, and ${DNm[lo]} is your quietest with ${wd[lo]}.`);
+ nt.push("Statements show total pay only. They don't split base pay, tips and peak pay, and they have no miles. Logging offers with the shortcut is what shows which zones and offer types pay.");
+ el.innerHTML=`<div class="grid"><div class="stat"><div class="num money">${$f(T,0)}</div><span>Earned, ${ks.length} months</span></div><div class="stat"><div class="num">${P}</div><span>Payouts</span></div><div class="stat"><div class="num money">${DN?$f(T/DN):"--"}</div><span>Per delivery</span></div><div class="stat"><div class="num money">${HR?$f(T/HR):"--"}</div><span>Per active hour</span></div></div>
+ <div class="card" style="margin-top:14px"><h2 style="font-size:17px">By month</h2>${tbl(["Month","Paid","Payouts","Deliveries","Per delivery","Per active hr"],tr)}<p class="hint">Per active hour counts time from pickup to drop-off only, so it runs higher than your real hourly rate. Statements are by deposit date, so a few days of pay can land in the next month.</p></div>
+ <div class="card"><h2 style="font-size:17px">Deliveries by day</h2>${tbl(["Day","Deliveries",""],wd.map((v,i)=>[DNm[i],v,bar(v,wx)]))}</div>
+ <div class="card"><h2 style="font-size:17px">What stands out</h2>${nt.map(x=>`<p class="hint" style="font-size:14px;color:var(--tx)">${x}</p>`).join("")}</div>`}
+$("#stmFile").onchange=async e=>{await takeStm([...e.target.files]);e.target.value=""};
+$("#stmPaste").onclick=()=>takeStm([$("#stmTxt").value],true);
+const dz3=$("#drop3");["dragover","dragenter"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor=""}));dz3.addEventListener("drop",e=>takeStm([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name))));
+const HDR2="date,time,zone,payout,miles,items,minutes,verdict,choice,src";
+const CITIES=["Murrieta","Temecula","Lake Elsinore","Menifee","Corona","Wildomar","Perris","Winchester","Sun City","Canyon Lake","Fontana","Riverside","Hemet","Norco","Eastvale","Moreno Valley"];
+function adjust(d){const M=S.monthly||{},sm={};d.forEach(r=>{if(r.src==="archive"){const k=(r.date||"").slice(0,7);sm[k]=(sm[k]||0)+num(r.minutes)}});
+ return d.map(r=>{const k=(r.date||"").slice(0,7);if(r.src!=="archive"||!M[k]||!sm[k])return r;const f=num(r.minutes)/sm[k],o={...r};o.payout=(M[k][0]*f).toFixed(2);if(M[k][1]>0)o.miles=(M[k][1]*f).toFixed(1);return o})}
+async function toLog(){const O=ARCH.map(r=>{const b=+new Date(r[2]+":00Z"),p=+new Date((r[1]||r[2])+":00Z");return{p,a:p-480000,b,s:r[3],i:r[4]}}).filter(o=>o.b>o.a).sort((x,y)=>x.a-y.a);
+ let i=0;while(i<O.length){let j=i,end=O[i].b;while(j+1<O.length&&O[j+1].a<end){j++;end=Math.max(end,O[j].b)}const share=(end-O[i].a)/(j-i+1)/60000;for(let k=i;k<=j;k++)O[k].m=share;i=j+1}
+ const F=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Los_Angeles",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
+ const lines=O.map(o=>{const q={};F.formatToParts(new Date(o.p)).forEach(x=>q[x.type]=x.value);const z=CITIES.find(c=>o.s.toLowerCase().includes(c.toLowerCase()))||"";return[q.year+"-"+q.month+"-"+q.day,q.hour+":"+q.minute,z,num(S.estPay).toFixed(2),(o.m/60*num(S.estMph)).toFixed(1),o.i||1,Math.round(o.m),"","Accepted","archive"].join(",")});
+ const old=($("#csv").value||"").trim().split(/\r?\n/).filter(Boolean).slice(1).filter(l=>!/,archive$/.test(l)),have=new Set(old);
+ const out=[HDR2,...old,...lines.filter(l=>!have.has(l))].join("\n");
+ $("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1})}
+let ARCH=[];
+async function route(f){const n=f.name.toLowerCase();if(n.endsWith(".zip"))return importZip(f);const t=await f.text();if(/ORDER_CREATED_TIME/i.test(t.slice(0,300)))return loadDeliv(t);return ingest(t)}
+function csvRows(t){const o=[];let r=[],c="",q=0;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=0}else c+=ch}else if(ch=='"')q=1;else if(ch==','){r.push(c);c=""}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);c="";if(r.length>1||r[0])o.push(r);r=[]}else c+=ch}if(c||r.length){r.push(c);o.push(r)}return o}
+async function importZip(f){if(!window.JSZip){toast("Zip reader did not load");return}
+ try{const z=await JSZip.loadAsync(f),e=Object.values(z.files).find(x=>/delivery_information\.csv$/i.test(x.name));
+ if(!e){toast("No delivery file in that zip");return}await loadDeliv(await e.async("string"))}catch(x){toast("Could not open that zip")}}
+async function loadDeliv(t){const R=csvRows(t),H=(R[0]||[]).map(h=>h.toLowerCase()),ix=k=>H.indexOf(k),a=ix("order_created_time"),b=ix("actual_pickup_time"),c=ix("actual_delivery_time"),s=ix("store_name"),n=ix("total_item_count"),st=ix("order_status");
+ if(a<0||c<0){toast("Not a DoorDash delivery file");return}
+ const T=v=>(v||"").slice(0,16).replace(" ","T");
+ ARCH=R.slice(1).filter(r=>!/cancel/i.test(r[st]||"")&&r[c]).map(r=>[T(r[a]),T(r[b]),T(r[c]),(r[s]||"").slice(0,90),num(r[n])]);
+ await put("archive",{v:1,r:ARCH});renderArch();await toLog();toast(ARCH.length+" deliveries added to your log");document.querySelector('[data-t="dash"]').click()}
+const D3=a=>new Date(a+":00Z");
+function tbl(h,r){return`<div class="wrap"><table><tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>${r.map(x=>`<tr>${x.map(y=>`<td>${y}</td>`).join("")}</tr>`).join("")}</table></div>`}
+const bar=(v,m)=>`<div style="background:var(--g2);height:8px;border-radius:5px;min-width:90px"><i style="display:block;height:100%;width:${100*v/m}%;background:var(--go);border-radius:5px"></i></div>`;
+function renderArch(){if(!ARCH.length)return;
+ const R=ARCH.map(r=>{const d=D3(r[2]),dur=r[1]?(d-D3(r[1]))/60000:0;return{d,dur:dur>0&&dur<180?dur:0,s:r[3],o:D3(r[0])}}),n=R.length;
+ const mo={},hr=Array(24).fill(0),wd=Array(7).fill(0),st={};
+ R.forEach(r=>{const k=r.d.getFullYear()+"-"+String(r.d.getMonth()+1).padStart(2,"0");(mo[k]=mo[k]||[]).push(r);hr[r.d.getHours()]++;wd[r.d.getDay()]++;const s=r.s.replace(/\s*[\(#-].*$/,"").trim()||r.s;st[s]=(st[s]||0)+1});
+ const dd=R.filter(r=>r.dur),avg=dd.length?dd.reduce((a,r)=>a+r.dur,0)/dd.length:0,first=R.map(r=>r.o).sort((a,b)=>a-b)[0],bh=hr.indexOf(Math.max(...hr)),lab=h=>(h%12||12)+(h<12?"am":"pm");
+ const S2=[[n.toLocaleString(),"Lifetime deliveries"],[first.toLocaleDateString(undefined,{month:"short",year:"numeric"}),"First order"],[avg?avg.toFixed(0)+" min":"--","Avg pickup to drop"],[lab(bh),"Busiest hour"]];
+ const mk=Object.keys(mo).sort().reverse(),mx=Math.max(...hr),wx=Math.max(...wd),sk=Object.keys(st).sort((a,b)=>st[b]-st[a]).slice(0,10),DN=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+ $("#histOut").innerHTML=`<div class="grid">${S2.map(s=>`<div class="stat"><div class="num money">${s[0]}</div><span>${s[1]}</span></div>`).join("")}</div>
+ <div class="card" style="margin-top:14px"><h2 style="font-size:17px">By month</h2>${tbl(["Month","Deliveries","Avg pickup to drop"],mk.map(k=>{const a=mo[k],d2=a.filter(r=>r.dur),v=d2.length?d2.reduce((x,r)=>x+r.dur,0)/d2.length:0;return[k,a.length,v?v.toFixed(0)+" min":"--"]}))}</div>
+ <div class="card"><h2 style="font-size:17px">By hour (your device time)</h2>${tbl(["Hour","Deliveries",""],hr.map((v,h)=>v?[lab(h),v,bar(v,mx)]:null).filter(Boolean))}</div>
+ <div class="card"><h2 style="font-size:17px">By day of week</h2>${tbl(["Day","Deliveries",""],wd.map((v,i)=>[DN[i],v,bar(v,wx)]))}</div>
+ <div class="card"><h2 style="font-size:17px">Top stores</h2>${tbl(["Store","Deliveries"],sk.map(k=>[esc(k),st[k]]))}</div>`;
+ if(!rows.length){$("#lvl").textContent="Lifetime · "+n+" deliveries";$("#xp").style.width="100%"}}
+const dz2=$("#drop2");["dragover","dragenter"].forEach(ev=>dz2.addEventListener(ev,e=>{e.preventDefault();dz2.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz2.addEventListener(ev,e=>{e.preventDefault();dz2.style.borderColor=""}));dz2.addEventListener("drop",async e=>{const f=e.dataTransfer.files[0];if(f)await route(f)});
+$("#file3").onchange=async e=>{const f=e.target.files[0];if(f){await route(f);e.target.value=""}};
+let LOGRATE=null;
+function setAcc(){const a=document.querySelector('[data-k="accept"]');if(a)a.value=S.accept;$("#c_r").value=S.accept}
+function showLR(){document.querySelectorAll(".lr").forEach(e=>e.innerHTML=LOGRATE==null?"":`Your log shows ${LOGRATE}%. <button class="btn ghost" style="padding:4px 10px" onclick="useLR()">Use it</button>`)}
+function useLR(){S.accept=LOGRATE;setAcc();put("settings",S);toast("Acceptance rate set to "+LOGRATE+"%")}
+$("#c_r").onchange=()=>{S.accept=num($("#c_r").value);setAcc();put("settings",S)};
+const dz=$("#drop");["dragover","dragenter"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.style.borderColor=""}));dz.addEventListener("drop",async e=>{const f=e.dataTransfer.files[0];if(f)await route(f)});
+["file","file2"].forEach(id=>$("#"+id).onchange=async e=>{const f=e.target.files[0];if(f){await route(f);e.target.value=""}});
+$("#ico").src="icon-180.png";$("#hdrIco").src="icon-180.png";
+$("#c_go").onclick=()=>{const r={payout:$("#c_p").value,miles:$("#c_m").value,minutes:$("#c_t").value,zone:$("#c_z").value.trim()},rate=num($("#c_r").value);
+ if(!num(r.payout)||!num(r.minutes)){toast("Enter payout and minutes");return}
+ const v=verdict(r,S,rate),m=num(r.miles),hr=v.net/v.h,mi=m?v.net/m:v.net,need=Math.max(S.floorMile,ramp(S,rate));
+ $("#c_out").innerHTML=`<div class="card" style="text-align:center"><div class="num ${v.ok?"good":"bad"}" style="font-size:56px">${v.ok?"TAKE":"PASS"}</div><div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(v.net)}</div><span>Net after car</span></div><div class="stat"><div class="num money">${$f(hr)}</div><span>Net $/hr (floor ${$f(S.floorHour)})</span></div><div class="stat"><div class="num money">${$f(mi)}</div><span>Net $/mile (need ${$f(need)})</span></div><div class="stat"><div class="num">${$f(S.bigCut,0)}</div><span>Big-offer cutoff</span></div></div></div>`};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+$("#load").onclick=async()=>{const d=parse($("#csv").value);if(!d.length){toast("Need a header row plus offers");return}
+  isDemo=false;analyze(d);const w=await put("log",{csv:$("#csv").value,v:1});
+  $("#saveInfo").textContent=w==="account"?"Saved to your account.":w?"Saved in this browser only.":"Could not save.";
+  document.querySelector('[data-t="dash"]').click()};
+$("#clear").onclick=async()=>{$("#csv").value="";analyze([]);await put("log",{csv:"",v:1});toast("Cleared")};
+$("#demo").onclick=()=>{const Z=["Vista","Oceanside","Carlsbad","San Marcos"],o=["date,time,zone,payout,miles,items,minutes,verdict,choice"];
+  for(let i=0;i<40;i++){const m=+(1.5+Math.random()*7).toFixed(1),p=+(3+m*(0.9+Math.random()*1.2)).toFixed(2),v=p/m>1.6?"Accept":"Decline",c=Math.random()<.85?v:(v=="Accept"?"Declined":"Accepted");
+    o.push(`2026-10-${10+i%14},12:${10+i},${Z[i%4]},${p},${m},${1+i%4},${Math.round(10+m*3.2)},${v},${c=="Accept"?"Accepted":c=="Decline"?"Declined":c}`)}
+  isDemo=true;analyze(parse(o.join("\n")));toast("Demo data, not saved");document.querySelector('[data-t="dash"]').click()};
+
+(async()=>{
+  drawFields();
+  await initStore();
+  const s=await get("settings");if(s){S={...DEF,...s};drawFields()}setAcc();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();
+})();
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>

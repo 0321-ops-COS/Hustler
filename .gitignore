@@ -1,0 +1,9 @@
+# Personal data: never commit
+data_archive.zip
+*.zip
+dasher_*.csv
+offers.txt
+settings.json
+statements/
+*.pdf
+.DS_Store
