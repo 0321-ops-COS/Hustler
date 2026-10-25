@@ -6,6 +6,10 @@ Single-page DoorDash offer analyzer. Runs entirely in your browser; your log and
 - Open the Pages link, then Share > Add to Home Screen on iPhone.
 - Log format: `date,time,zone,payout,miles,items,minutes,verdict,choice`
 
+## California pay guarantee
+
+The dashboard has a **California pay guarantee** card. Enter a week's DoorDash pay, tips and active time (Earnings > Payout details). It estimates the top-up as `max(0, pct x min wage x active hours + per-mile x miles - DoorDash pay)`. Defaults: $16.90/hr, 120%, $0.37/mi (all editable in Settings). Miles come from your log unless you enter them. The real adjustment posts the Monday after the week ends: enter it and the card shows estimate vs actual.
+
 **Never commit** your DoorDash `data_archive.zip`, statement PDFs, `offers.txt` or `settings.json`. `.gitignore` blocks them.
 
 ## Starting from an established account
