@@ -114,6 +114,8 @@ nav button[hidden]{display:none}
 </nav>
 
 <section id="dash">
+  <div class="card" id="start"></div>
+  <div class="card" id="float"></div>
   <div class="card" id="quest"></div>
   <div class="card"><div class="seg" id="seg"><button data-p="day" class="on">Day</button><button data-p="week">Week</button><button data-p="month">Month</button><button data-p="year">Year</button></div><div id="earnBig"></div><div class="wrap" id="earnTbl" style="margin-top:12px"></div></div>
   <div class="card hero">
@@ -194,8 +196,8 @@ function menu(o){$("#nav").classList.toggle("open",o);$("#scrim").classList.togg
 $("#menuBtn").onclick=()=>menu(!$("#nav").classList.contains("open"));$("#scrim").onclick=()=>menu(false);
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>menu(false)));
 const CFG={shortcutName:"DoorDash Offer Analyzer",shortcutLink:"",appUrl:""};
-const DEF={accept:89,estPay:7,estMph:20,mpg:17.5,wear:0.12,gas:5.75,rampTop:90,rampLow:85,floorMile:0.75,floorHour:10,baseMile:1.5,baseHour:18,bigItems:3,bigMile:2,bigHour:20,emergency:80,taxRate:0.70};
-const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"Ramp top (% acceptance)",rampLow:"Ramp low (% acceptance)",floorMile:"Floor $/mile",floorHour:"Floor $/hour",baseMile:"Base $/mile",baseHour:"Base $/hour",bigItems:"Big order: items over",bigMile:"Big order $/mile",bigHour:"Big order $/hour",emergency:"Emergency rate (%)",taxRate:"Mileage deduction rate ($/mi)"};
+const DEF={accept:89,estPay:7,estMph:20,mpg:17.5,wear:0.12,gas:5.75,rampTop:90,rampLow:85,floorMile:0.75,floorHour:10,baseMile:1.5,baseHour:18,bigItems:3,bigMile:2,bigHour:20,emergency:80,taxRate:0.70,target:85};
+const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"Ramp top (% acceptance)",rampLow:"Ramp low (% acceptance)",floorMile:"Floor $/mile",floorHour:"Floor $/hour",baseMile:"Base $/mile",baseHour:"Base $/hour",bigItems:"Big order: items over",bigMile:"Big order $/mile",bigHour:"Big order $/hour",emergency:"Emergency rate (%)",taxRate:"Mileage deduction rate ($/mi)",target:"Float target (% acceptance)"};
 let S={...DEF},store=null,uid=null,isDemo=false;
 const num=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?0:n};
 const $f=(n,d=2)=>"$"+n.toFixed(d);
@@ -246,7 +248,7 @@ const took=v=>/accept/i.test(v||"")&&!/declin/i.test(v||"");
 let rows=[];
 
 function analyze(data){
-  showCheck(data);data=adjust(data);rows=data;renderEarn();const n=data.length;
+  showCheck(data);data=adjust(data);rows=data;renderEarn();refreshFirst();const n=data.length;
   if(!n){renderGame([],[]);$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;return}
   const gasOf=r=>(S.zoneGas&&S.zoneGas[r.zone])||S.gas;
   const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),net=("net" in r&&r.net!=="")?num(r.net):p-m*(gasOf(r)/S.mpg+S.wear);
@@ -336,8 +338,11 @@ $("#stmPaste").onclick=()=>takeStm([$("#stmTxt").value],true);
 const dz3=$("#drop3");["dragover","dragenter"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor=""}));dz3.addEventListener("drop",e=>takeStm([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name))));
 const HDR2="date,time,zone,payout,miles,items,minutes,verdict,choice,src";
 const CITIES=["Murrieta","Temecula","Lake Elsinore","Menifee","Corona","Wildomar","Perris","Winchester","Sun City","Canyon Lake","Fontana","Riverside","Hemet","Norco","Eastvale","Moreno Valley"];
-function adjust(d){const M=S.monthly||{},sm={};d.forEach(r=>{if(r.src==="archive"){const k=(r.date||"").slice(0,7);sm[k]=(sm[k]||0)+num(r.minutes)}});
- return d.map(r=>{const k=(r.date||"").slice(0,7);if(r.src!=="archive"||!M[k]||!sm[k])return r;const f=num(r.minutes)/sm[k],o={...r};o.payout=(M[k][0]*f).toFixed(2);if(M[k][1]>0)o.miles=(M[k][1]*f).toFixed(1);return o})}
+function adjust(d){const M=S.monthly||{},sm={},ix={},pc={};
+ d.forEach((r,i)=>{if(r.src==="archive"){const k=(r.date||"").slice(0,7);sm[k]=(sm[k]||0)+num(r.minutes);(ix[k]=ix[k]||[]).push(i)}});
+ Object.keys(ix).forEach(k=>{if(!M[k]||!sm[k])return;const T=Math.round(M[k][0]*100),ex=ix[k].map(i=>T*num(d[i].minutes)/sm[k]),fl=ex.map(Math.floor);let rem=T-fl.reduce((a,b)=>a+b,0);
+  ex.map((v,j)=>[v-fl[j],j]).sort((a,b)=>b[0]-a[0]).slice(0,Math.max(0,rem)).forEach(x=>fl[x[1]]++);ix[k].forEach((i,j)=>pc[i]=fl[j]/100)});
+ return d.map((r,i)=>{const k=(r.date||"").slice(0,7);if(r.src!=="archive"||!M[k]||!sm[k]||pc[i]===undefined)return r;const f=num(r.minutes)/sm[k],o={...r};o.payout=pc[i].toFixed(2);if(M[k][1]>0)o.miles=(M[k][1]*f).toFixed(1);return o})}
 async function toLog(){const O=ARCH.map(r=>{const b=+new Date(r[2]+":00Z"),p=+new Date((r[1]||r[2])+":00Z");return{p,a:p-480000,b,s:r[3],i:r[4]}}).filter(o=>o.b>o.a).sort((x,y)=>x.a-y.a);
  let i=0;while(i<O.length){let j=i,end=O[i].b;while(j+1<O.length&&O[j+1].a<end){j++;end=Math.max(end,O[j].b)}const share=(end-O[i].a)/(j-i+1)/60000;for(let k=i;k<=j;k++)O[k].m=share;i=j+1}
  const F=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Los_Angeles",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
@@ -374,6 +379,25 @@ function renderArch(){if(!ARCH.length)return;
  if(!rows.length){$("#lvl").textContent="Lifetime · "+n+" deliveries";$("#xp").style.width="100%"}}
 const dz2=$("#drop2");["dragover","dragenter"].forEach(ev=>dz2.addEventListener(ev,e=>{e.preventDefault();dz2.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz2.addEventListener(ev,e=>{e.preventDefault();dz2.style.borderColor=""}));dz2.addEventListener("drop",async e=>{const f=e.dataTransfer.files[0];if(f)await route(f)});
 $("#file3").onchange=async e=>{const f=e.target.files[0];if(f){await route(f);e.target.value=""}};
+// start here + decline float
+function renderStart(){const el=$("#start");if(!el)return;
+ const am={};(rows||[]).filter(r=>r.src==="archive").forEach(r=>{const k=(r.date||"").slice(0,7);if(k)am[k]=1});
+ const ak=Object.keys(am).sort(),ex=ak.filter(k=>STM[k]),es=ak.filter(k=>!STM[k]&&(!ex.length||k>=ex[0])),nS=Object.keys(STM).length,hasA=ARCH.length>0||ak.length>0,hasS=nS>0,hasR=!!S.accSet;
+ const step=(ok,t,sub,b)=>'<div style="display:flex;gap:10px;align-items:flex-start;margin:10px 0"><b class="'+(ok?'good':'')+'" style="min-width:22px">'+(ok?'✓':'•')+'</b><div style="flex:1"><div>'+t+'</div><small class="hint" style="display:block">'+sub+'</small></div>'+(b||'')+'</div>';
+ const real=ex.length?'<p class="hint" style="font-size:14px;color:var(--tx)"><b>Exact:</b> '+ex.join(', ')+' (monthly total is your statement).'+(es.length?' <b>Estimated:</b> '+es.join(', ')+' (no statement yet, pay uses your per-delivery estimate).':'')+' Per-delivery pay and miles are always estimates that add up to the statement total.</p>':'';
+ if(hasA&&hasS&&hasR){el.innerHTML='<h2 style="font-size:17px">Your numbers</h2>'+real;return}
+ el.innerHTML='<h2 style="font-size:17px">Start here</h2><p class="hint">Bring in your real history first so every number builds on your account, not a blank page.</p>'
+ +step(hasA,"DoorDash data_archive.zip",hasA?ARCH.length+" deliveries loaded":"Gives every delivery's date, time, store and item count.",'<button class="btn ghost" data-open="hist">'+(hasA?"Open":"Add")+'</button>')
+ +step(hasS,"Monthly statement PDFs",hasS?nS+" months read. These set your exact monthly pay.":"Sets exact monthly pay. Without them, pay is only a flat estimate.",'<button class="btn ghost" data-open="earn">'+(hasS?"Open":"Add")+'</button>')
+ +step(hasR,"Your acceptance rate",hasR?"Saved at "+num(S.accept)+"%.":"In DoorDash, open Ratings > Acceptance rate and copy the Accepted and Declined counts from Last 100 offers.","")
+ +(hasR?"":'<div class="fields"><label>Accepted<input inputmode="numeric" id="st_a"></label><label>Declined<input inputmode="numeric" id="st_d"></label></div><div class="row"><button class="btn" id="st_go">Save rate</button></div>')+real}
+function renderFloat(){const el=$("#float");if(!el)return;
+ const T=num(S.target)||85,d=Math.max(0,Math.round(100-num(S.accept))),left=(100-T)-d,none=left<=0;
+ const msg=none?(left<0?'NO FLOAT. You are '+(-left)+' decline'+(left===-1?'':'s')+' past your '+T+'% target. Accept offers until old declines roll off the last 100.':`NO FLOAT. Your next decline drops you under ${T}%. Take what comes.`):left<=3?'LOW. '+left+' decline'+(left===1?'':'s')+' left before you drop under '+T+'%.':'OK. You can pass on '+left+' more before you drop under '+T+'%.';
+ el.innerHTML='<h2 style="font-size:17px">Decline float</h2><div class="grid"><div class="stat"><div class="num '+(none?'bad':left<=3?'':'good')+'">'+left+'</div><span>Declines left</span></div><div class="stat"><div class="num">'+d+'</div><span>Declined, last 100</span></div><div class="stat"><div class="num">'+T+'%</div><span>Target</span></div></div><p class="hint" style="font-size:14px;color:var(--tx)">'+msg+'</p><p class="hint">Based on '+num(S.accept)+'% acceptance. Float goes up by 1 each time an old decline rolls off, and down by 1 each time you decline. Change the target in Settings.</p>'}
+function refreshFirst(){try{renderStart();renderFloat()}catch(e){}}
+document.addEventListener("click",async e=>{if(e.target.id!=="st_go")return;const a=num($("#st_a").value),d=num($("#st_d").value);if(a+d<=0){toast("Enter your Accepted and Declined counts");return}
+ S.accept=Math.round(100*a/(a+d));S.accSet=1;setAcc();await put("settings",S);refreshFirst();toast("Acceptance rate set to "+S.accept+"%")});
 let LOGRATE=null;
 function setAcc(){const a=document.querySelector('[data-k="accept"]');if(a)a.value=S.accept;$("#c_r").value=S.accept}
 function showLR(){document.querySelectorAll(".lr").forEach(e=>e.innerHTML=LOGRATE==null?"":`Your log shows ${LOGRATE}%. <button class="btn ghost" style="padding:4px 10px" onclick="useLR()">Use it</button>`)}
@@ -434,8 +458,8 @@ applyPins();
 (async()=>{
   drawFields();renderGame([],[]);
   await initStore();
-  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();$("#c_g").value=S.gas;{const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}}
+  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&num(s[k])>0)S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}}
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
