@@ -458,7 +458,7 @@ applyPins();
 (async()=>{
   drawFields();renderGame([],[]);
   await initStore();
-  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&num(s[k])>0)S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
+  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
   const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}}
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
