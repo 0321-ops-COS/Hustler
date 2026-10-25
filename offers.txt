@@ -1,0 +1,114 @@
+DOORDASH OFFERS — UPDATED WORKING LEDGER
+
+Previously extracted offers: 81 rows. Newly matched from the supplied Oct 5 screenshots: 9 offer cards. Total ledger: 90 offer rows.
+The supplied screenshots show 6 offers in the first Oct 5 session and 3 in the second, so they contain 9 offer cards, not 8. The first session shows 7 deliveries because one offer combines two orders.
+Important: estimated miles below are rough guesses from payout only (~$2.50 per mile proxy), not GPS/route distances. Store names and payout fields are copied from the current extraction; any unclear fields remain marked UNKNOWN.
+All 8 prior unmatched placeholders have been replaced with the 9 offer cards visible in the newly supplied Oct 5 screenshots. One offer has no visible DoorDash-pay/tip breakdown, so those fields remain UNKNOWN.
+
+## Previously extracted offers (81)
+01. Date: 2026-10-20 | Place/order: Dollar General (13576) + Little Caesars (0001-5872) | Payout: $15.45 | Est. miles: ~6.0 mi (guess) | DoorDash pay: $14.45 | Customer tip: $1.00 | Note: Combined offer; shown in supplied example
+02. Date: 2026-10-20 | Place/order: Stater Bros. (197) | Payout: $13.78 | Est. miles: ~5.5 mi (guess) | DoorDash pay: $6.20 | Customer tip: $7.58
+03. Date: 2026-10-20 | Place/order: 7-Eleven (38490) | Payout: $5.50 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.00 | Customer tip: $2.50
+04. Date: 2026-10-20 | Place/order: Cafe Rio (0124 Menifee) | Payout: $8.00 | Est. miles: ~3.0 mi (guess) | DoorDash pay: $2.00 | Customer tip: $6.00
+05. Date: 2026-10-20 | Place/order: Ralphs #0140 | Payout: $8.70 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $4.20 | Customer tip: $4.50
+06. Date: 2026-10-20 | Place/order: Eastport Market (Canyon Lake Dr N) | Payout: $9.00 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $7.00 | Customer tip: $2.00
+07. Date: 2026-10-20 | Place/order: Stater Bros. (187) | Payout: $10.45 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $6.95 | Customer tip: $3.50
+08. Date: 2026-10-21 | Place/order: Wendy's (12264) | Payout: $5.00 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.00 | Customer tip: $2.00
+09. Date: 2026-10-21 | Place/order: Alberto's Mexican Food (Perris) | Payout: $3.75 | Est. miles: ~1.5 mi (guess) | DoorDash pay: $2.00 | Customer tip: $1.75
+10. Date: 2026-10-21 | Place/order: Papa Johns (3503) | Payout: $9.25 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $4.25 | Customer tip: $5.00
+11. Date: 2026-10-21 | Place/order: Jersey Mike's (20302) + Mountain Mike's Pizza (317) | Payout: $15.25 | Est. miles: ~6.0 mi (guess) | DoorDash pay: $8.25 | Customer tip: $7.00
+12. Date: 2026-10-21 | Place/order: Los Primos Mexican Food (Case Rd) | Payout: $10.25 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $4.75 | Customer tip: $5.50
+13. Date: 2026-10-21 | Place/order: Stater Bros. (197) | Payout: $10.95 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $8.95 | Customer tip: $2.00
+14. Date: 2026-10-21 | Place/order: Jersey Mike's Subs (20446) | Payout: $5.50 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.00 | Customer tip: $2.50
+15. Date: 2026-10-21 | Place/order: Ralphs #0140 + Target (02471) | Payout: $18.40 | Est. miles: ~7.5 mi (guess) | DoorDash pay: $15.40 | Customer tip: $3.00
+16. Date: 2026-10-21 | Place/order: Tractor Supply (1889) | Payout: $12.45 | Est. miles: ~5.0 mi (guess) | DoorDash pay: $7.95 | Customer tip: $4.50
+17. Date: 2026-10-21 | Place/order: Target (02471) + Aldi Grocery Marketplace (479062) | Payout: $22.15 | Est. miles: ~9.0 mi (guess) | DoorDash pay: $16.15 | Customer tip: $6.00
+18. Date: 2026-10-21 | Place/order: Rubio's Coastal Grill (Menifee-279) | Payout: $5.00 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.50 | Customer tip: $1.50
+19. Date: 2026-10-21 | Place/order: Wendy's (12264) | Payout: $6.50 | Est. miles: ~2.5 mi (guess) | DoorDash pay: $4.00 | Customer tip: $2.50
+20. Date: 2026-10-21 | Place/order: Tokyo House (Haun Rd) | Payout: $5.50 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $2.00 | Customer tip: $3.50
+21. Date: 2026-10-21 | Place/order: Sprouts Farmers Market #443 | Payout: $21.43 | Est. miles: ~8.5 mi (guess) | DoorDash pay: $12.45 | Customer tip: $8.98
+22. Date: 2026-10-22 | Place/order: Sweet Red Peach (Newport Rd) + Taco Bell (040804) | Payout: $9.55 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $6.50 | Customer tip: $3.00 | Note: Payout OCR uncertain; total inferred from session total
+23. Date: 2026-10-22 | Place/order: Jersey Mike's Subs (20446) + Jersey Mike's Subs (20446) | Payout: $11.75 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $6.75 | Customer tip: $5.00 | Note: Payout OCR uncertain; total inferred from session total
+24. Date: 2026-10-22 | Place/order: Little Caesars Drive (0001-5749) + El Pollo Loco (6110) | Payout: $18.45 | Est. miles: ~7.5 mi (guess) | DoorDash pay: UNKNOWN | Customer tip: UNKNOWN | Note: Payout inferred by session total; pay/tip not legible
+25. Date: 2026-10-22 | Place/order: Target (02471) | Payout: $3.50 | Est. miles: ~1.5 mi (guess) | DoorDash pay: $2.00 | Customer tip: $1.50
+26. Date: 2026-10-22 | Place/order: Stater Bros. Markets (111) + STATERBRO 25904 NEWPORT | Payout: $26.03 | Est. miles: ~10.5 mi (guess) | DoorDash pay: $13.65 | Customer tip: $12.38 | Note: Store label partly OCR-corrupted
+27. Date: 2026-10-22 | Place/order: Michaels (9053) | Payout: $6.20 | Est. miles: ~2.5 mi (guess) | DoorDash pay: $4.70 | Customer tip: $1.50
+28. Date: 2026-10-22 | Place/order: Target (02471) | Payout: $12.20 | Est. miles: ~5.0 mi (guess) | DoorDash pay: $7.70 | Customer tip: $4.50
+29. Date: 2026-10-22 | Place/order: Petco (1170) | Payout: $5.33 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.95 | Customer tip: $1.38
+30. Date: 2026-10-22 | Place/order: Stater Bros. (083) | Payout: $10.20 | Est. miles: ~4.0 mi (guess) | DoorDash pay: UNKNOWN | Customer tip: UNKNOWN | Note: Pay/tip not legible
+31. Date: 2026-10-22 | Place/order: Stater Bros. Markets (111) / STATERBRO 25904 NEWPORT | Payout: $10.70 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $6.20 | Customer tip: $4.50 | Note: Store label partly OCR-corrupted
+32. Date: 2026-10-22 | Place/order: DMSD Foods Inc (26015 Newport Rd) | Payout: $9.75 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $4.75 | Customer tip: $5.00
+33. Date: 2026-10-22 | Place/order: Walgreens (6127) | Payout: $7.20 | Est. miles: ~3.0 mi (guess) | DoorDash pay: $5.70 | Customer tip: $1.50
+34. Date: 2026-10-22 | Place/order: ONO Hawaiian BBQ (Ono-043 Menifee) | Payout: $5.00 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $2.00 | Customer tip: $3.00 | Note: Payout OCR uncertain; inferred from session total
+35. Date: 2026-10-22 | Place/order: Little Caesars (0001-5749) | Payout: $10.25 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $6.25 | Customer tip: $4.00
+36. Date: 2026-10-22 | Place/order: Stater Bros. Markets (111) / STATERBRO 25904 NEWPORT | Payout: $9.20 | Est. miles: ~3.5 mi (guess) | DoorDash pay: UNKNOWN | Customer tip: UNKNOWN | Note: Pay/tip not legible
+37. Date: 2026-10-23 | Place/order: Vons (2818) | Payout: $10.05 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $5.05 | Customer tip: $5.00
+38. Date: 2026-10-23 | Place/order: Wingstop (1868) | Payout: $12.00 | Est. miles: ~5.0 mi (guess) | DoorDash pay: $9.00 | Customer tip: $3.00
+39. Date: 2026-10-23 | Place/order: Pinkberry (15053) | Payout: $9.00 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $3.00 | Customer tip: $6.00
+40. Date: 2026-10-23 | Place/order: Taco Bell (038511) | Payout: $9.00 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $9.00 | Customer tip: $0.00
+41. Date: 2026-10-23 | Place/order: Best Buy (847) | Payout: $4.70 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $4.70 | Customer tip: $0.00
+42. Date: 2026-10-23 | Place/order: Thai Lotus (Cabot Dr) + CCCO103609 (8602 Cajalco Rd) | Payout: $18.50 | Est. miles: ~7.5 mi (guess) | DoorDash pay: $13.50 | Customer tip: $5.00 | Note: Combined offer
+43. Date: 2026-10-23 | Place/order: Chipotle (2610) + Chipotle (2610) | Payout: $14.00 | Est. miles: ~5.5 mi (guess) | DoorDash pay: $7.00 | Customer tip: $7.00 | Note: Combined offer
+44. Date: 2026-10-12 | Place/order: Little Caesars (0001-5749) | Payout: $7.50 | Est. miles: ~3.0 mi (guess) | DoorDash pay: $5.50 | Customer tip: $2.00
+45. Date: 2026-10-12 | Place/order: Haun Rd & Newport Rd | Payout: $6.75 | Est. miles: ~2.5 mi (guess) | DoorDash pay: $6.75 | Customer tip: $0.00 | Note: Location/merchant label as shown
+46. Date: 2026-10-12 | Place/order: Aldi Grocery Marketplace (479062) | Payout: $27.57 | Est. miles: ~11.0 mi (guess) | DoorDash pay: $17.20 | Customer tip: $10.37
+47. Date: 2026-10-12 | Place/order: Stater Bros. Markets (113) | Payout: $25.59 | Est. miles: ~10.0 mi (guess) | DoorDash pay: $17.00 | Customer tip: $8.59
+48. Date: 2026-10-12 | Place/order: Raising Cane's (C0874) + El Pollo Loco (SOF, West Nuevo Rd) | Payout: $13.00 | Est. miles: ~5.0 mi (guess) | DoorDash pay: $7.50 | Customer tip: $5.50 | Note: Combined offer
+49. Date: 2026-10-12 | Place/order: Jack in the Box (5316) | Payout: $5.00 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.50 | Customer tip: $1.50
+50. Date: 2026-10-12 | Place/order: Dollar General (14322) | Payout: $10.75 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $8.75 | Customer tip: $2.00
+51. Date: 2026-10-12 | Place/order: Denny's (7531) | Payout: $9.00 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $9.00 | Customer tip: $0.00
+52. Date: 2026-10-12 | Place/order: McDonald's (4698, Sun City-Bradley) | Payout: $9.75 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $7.25 | Customer tip: $2.50 | Note: Payout inferred from session total
+53. Date: 2026-10-12 | Place/order: Stater Bros. (083) + Vons Grocery (2386) | Payout: $51.26 | Est. miles: ~20.5 mi (guess) | DoorDash pay: $31.75 | Customer tip: $19.51 | Note: Combined offer
+54. Date: 2026-10-12 | Place/order: Aldi Grocery Marketplace (479062) + Lowe’s (2294) | Payout: $27.90 | Est. miles: ~11.0 mi (guess) | DoorDash pay: $21.90 | Customer tip: $6.00 | Note: Combined offer
+55. Date: 2026-10-12 | Place/order: Stater Bros. Markets (111) / STATERBRO 25904 NEWPORT | Payout: $17.20 | Est. miles: ~7.0 mi (guess) | DoorDash pay: UNKNOWN | Customer tip: UNKNOWN | Note: Pay/tip not fully legible
+56. Date: 2026-10-13 | Place/order: Cardenas Markets (Grocery) #31 | Payout: $20.00 | Est. miles: ~8.0 mi (guess) | DoorDash pay: $14.45 | Customer tip: $5.55
+57. Date: 2026-10-13 | Place/order: Panera (Collier Avenue) | Payout: $9.00 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $9.00 | Customer tip: $0.00
+58. Date: 2026-10-13 | Place/order: Sprouts Farmers Market #443 | Payout: $12.80 | Est. miles: ~5.0 mi (guess) | DoorDash pay: $7.75 | Customer tip: $5.05
+59. Date: 2026-10-13 | Place/order: Tokyo House (Haun Rd) + Staples (1466) | Payout: $23.45 | Est. miles: ~9.5 mi (guess) | DoorDash pay: $15.95 | Customer tip: $7.50 | Note: Combined offer
+60. Date: 2026-10-13 | Place/order: Mountain Mike's Pizza (318) | Payout: $6.50 | Est. miles: ~2.5 mi (guess) | DoorDash pay: $4.00 | Customer tip: $2.50
+61. Date: 2026-10-13 | Place/order: ONO Hawaiian BBQ (Ono-043 Menifee) | Payout: $5.25 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.25 | Customer tip: $2.00 | Note: Payout inferred from session total
+62. Date: 2026-10-13 | Place/order: ONO Hawaiian BBQ (Ono-043 Menifee) | Payout: $8.00 | Est. miles: ~3.0 mi (guess) | DoorDash pay: $8.00 | Customer tip: $0.00
+63. Date: 2026-10-13 | Place/order: Del Taco (1374) + Del Taco (1374) | Payout: $11.00 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $6.00 | Customer tip: $5.00 | Note: Combined offer
+64. Date: 2026-10-13 | Place/order: Blaze Pizza (1417) | Payout: $5.00 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.00 | Customer tip: $2.00
+65. Date: 2026-10-13 | Place/order: Stater Bros. (174) | Payout: $9.95 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $5.95 | Customer tip: $4.00
+66. Date: 2026-10-13 | Place/order: McDonald's (23351, Murrieta I-15/Clinton Keith) | Payout: $4.00 | Est. miles: ~1.5 mi (guess) | DoorDash pay: $3.00 | Customer tip: $1.00
+67. Date: 2026-10-13 | Place/order: Dave's Hot Chicken (Menifee) | Payout: $8.50 | Est. miles: ~3.5 mi (guess) | DoorDash pay: $8.50 | Customer tip: $0.00
+68. Date: 2026-10-14 | Place/order: Panda Express (3779) | Payout: $10.00 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $6.00 | Customer tip: $4.00
+69. Date: 2026-10-14 | Place/order: Vons (2386) | Payout: $27.50 | Est. miles: ~11.0 mi (guess) | DoorDash pay: $13.50 | Customer tip: $14.00
+70. Date: 2026-10-14 | Place/order: Five Guys (CA-1672) | Payout: $11.50 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $7.50 | Customer tip: $4.00
+71. Date: 2026-10-14 | Place/order: Stater Bros. (197) | Payout: $12.00 | Est. miles: ~5.0 mi (guess) | DoorDash pay: $8.00 | Customer tip: $4.00
+72. Date: 2026-10-14 | Place/order: Stater Bros. (197) | Payout: $19.50 | Est. miles: ~8.0 mi (guess) | DoorDash pay: $9.50 | Customer tip: $10.00
+73. Date: 2026-10-14 | Place/order: Store label partly shown as “6875” | Payout: $17.45 | Est. miles: ~7.0 mi (guess) | DoorDash pay: UNKNOWN | Customer tip: UNKNOWN | Note: Merchant OCR unclear
+74. Date: 2026-10-15 | Place/order: Jersey Mike's (Newport Road) | Payout: $6.75 | Est. miles: ~2.5 mi (guess) | DoorDash pay: $4.75 | Customer tip: $2.00
+75. Date: 2026-10-15 | Place/order: Best Buy (1409) | Payout: $15.25 | Est. miles: ~6.0 mi (guess) | DoorDash pay: $13.75 | Customer tip: $1.50
+76. Date: 2026-10-15 | Place/order: Cardenas Markets Cocina Perris (45) | Payout: $10.75 | Est. miles: ~4.5 mi (guess) | DoorDash pay: $5.25 | Customer tip: $5.50
+77. Date: 2026-10-15 | Place/order: WG0251 Menifee | Payout: $5.00 | Est. miles: ~2.0 mi (guess) | DoorDash pay: $3.50 | Customer tip: $1.50 | Note: Merchant label as shown
+78. Date: 2026-10-15 | Place/order: Ralphs #0140 | Payout: $19.67 | Est. miles: ~8.0 mi (guess) | DoorDash pay: $11.50 | Customer tip: $8.17
+79. Date: 2026-10-15 | Place/order: La Michoacana Que Rico (CA-74) | Payout: $9.75 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $4.25 | Customer tip: $5.50
+80. Date: 2026-10-15 | Place/order: Popeyes Louisiana Kitchen (14386) + Popeyes Louisiana Kitchen (14386) | Payout: $16.59 | Est. miles: ~6.5 mi (guess) | DoorDash pay: $12.00 | Customer tip: $4.59 | Note: Combined offer; payout inferred from session total
+81. Date: 2026-10-15 | Place/order: Stater Bros. (187) | Payout: $10.50 | Est. miles: ~4.0 mi (guess) | DoorDash pay: $6.00 | Customer tip: $4.50
+
+## Newly matched offers from supplied Oct 5, 2026 screenshots
+
+82. Date: 2026-10-05 | Place/order: Stater Bros. Markets (098) | Payout: $10.27 | Est. miles: ~4.0 mi (guess based on payout; not route data) | DoorDash pay: $3.70 | Customer tip: $6.57 | Session: 10:03 AM–1:30 PM
+83. Date: 2026-10-05 | Place/order: Stater Bros. Markets (098) | Payout: $7.75 | Est. miles: ~3.0 mi (guess based on payout; not route data) | DoorDash pay: $6.25 | Customer tip: $1.50 | Session: 10:03 AM–1:30 PM
+84. Date: 2026-10-05 | Place/order: Albertsons Grocery (798) | Payout: $17.89 | Est. miles: ~7.0 mi (guess based on payout; not route data) | DoorDash pay: $9.70 | Customer tip: $8.19 | Session: 10:03 AM–1:30 PM
+85. Date: 2026-10-05 | Place/order: Target (02195) | Payout: $11.75 | Est. miles: ~4.5 mi (guess based on payout; not route data) | DoorDash pay: $8.75 | Customer tip: $3.00 | Session: 10:03 AM–1:30 PM
+86. Date: 2026-10-05 | Place/order: The Home Depot (via Bringg) (3150 Case Rd Bldg P) + Caffe Mercato (N Antelope Rd) | Payout: $27.00 | Est. miles: ~11.0 mi (guess based on payout; not route data) | DoorDash pay: UNKNOWN | Customer tip: UNKNOWN | Note: Expanded payout breakdown not visible in screenshot; combined offer | Session: 10:03 AM–1:30 PM
+87. Date: 2026-10-05 | Place/order: Aldi Grocery Marketplace (479062) | Payout: $39.70 | Est. miles: ~16.0 mi (guess based on payout; not route data) | DoorDash pay: $29.75 | Customer tip: $9.95 | Session: 10:03 AM–1:30 PM
+88. Date: 2026-10-05 | Place/order: Walgreens (9486) | Payout: $5.75 | Est. miles: ~2.0 mi (guess based on payout; not route data) | DoorDash pay: $3.75 | Customer tip: $2.00 | Session: 2:38 PM–4:06 PM
+89. Date: 2026-10-05 | Place/order: Panera MP (601980 - Collier Ave - Lake Elsinore CA) | Payout: $9.75 | Est. miles: ~4.0 mi (guess based on payout; not route data) | DoorDash pay: $5.25 | Customer tip: $4.50 | Session: 2:38 PM–4:06 PM
+90. Date: 2026-10-05 | Place/order: Stater Bros. Markets (098) | Payout: $15.25 | Est. miles: ~6.0 mi (guess based on payout; not route data) | DoorDash pay: $12.25 | Customer tip: $3.00 | Session: 2:38 PM–4:06 PM
+
+## Dates represented in extracted offers
+- 2026-10-05: 9 newly matched offer rows from screenshots (6 offers in first session, 3 in second; first session shows 7 deliveries because one offer combines two orders)
+- 2026-10-12: 12 extracted offer rows
+- 2026-10-13: 12 extracted offer rows
+- 2026-10-14: 6 extracted offer rows
+- 2026-10-15: 8 extracted offer rows
+- 2026-10-20: 7 extracted offer rows
+- 2026-10-21: 14 extracted offer rows
+- 2026-10-22: 15 extracted offer rows
+- 2026-10-23: 7 extracted offer rows
+
+Do not use estimated miles as tax/mileage records. Replace guesses with route miles from the offer or delivery details when available.
