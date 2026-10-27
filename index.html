@@ -575,11 +575,31 @@ $("#pgList").innerHTML=PGS.map(p=>`<div class="pg"><button class="pgb" data-open
 document.addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){const b=document.querySelector('nav button[data-t="'+o.dataset.open+'"]');if(b)b.click()}});
 document.addEventListener("change",e=>{const i=e.target.closest("[data-pin]");if(!i)return;PIN[i.dataset.pin]=i.checked;try{localStorage.setItem("hh_pins",JSON.stringify(PIN))}catch(x){}applyPins()});
 applyPins();
+let appReady=false;
+async function processIncomingHash(){
+  if(!appReady)return;
+  const raw=location.hash;
+  const hm=raw.match(/^#add=(.+)$/);
+  const tm=raw.match(/^#test=(.+)$/);
+  if(!hm&&!tm)return;
+  // Clear the fragment before awaiting storage so the same URL cannot be replayed.
+  history.replaceState(null,"",location.pathname+location.search);
+  try{
+    const row=decodeURIComponent((hm||tm)[1]);
+    if(tm||TESTMODE){showTest(row);return}
+    await addRow(row);
+  }catch(e){toast("Could not read incoming offer link")}
+}
+window.addEventListener("hashchange",()=>{
+  if(appReady)processIncomingHash();
+});
 (async()=>{
   drawFields();renderGame([],[]);
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}const tm=location.hash.match(/^#test=(.+)$/);if(tm){showTest(decodeURIComponent(tm[1]));history.replaceState(null,"",location.pathname)}}
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  appReady=true;
+  await processIncomingHash();
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
