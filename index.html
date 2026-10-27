@@ -189,7 +189,7 @@ nav button[hidden]{display:none}
     <p class="hint">The AI brief is plain text with your rules, columns, settings and log. Paste it into any AI to continue.</p>
   </div>
   <div class="card" id="cloudCard"><h2 style="font-size:17px">Cloud sync</h2><p class="hint" id="cloudMsg"></p><div id="cloudBody"></div></div>
-  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">Run the analyzer from the Scoreboard. To bring offers back: have the shortcut copy its log row, then tap Paste copied rows in Log, or pick offers.txt there. A web app on iPhone cannot read your Shortcuts folder by itself.</p></div>
+  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">The shortcut sends each offer to your account. Sign in under Settings, then offers appear here when you open the app, or tap the button. Backup: have the shortcut copy its log row, then tap Paste copied rows in Log.</p><div class="row"><button class="btn" id="pullOffers">Pull offers from shortcut</button></div></div>
   <div class="card" style="text-align:center"><img id="ico" alt="Hustle HQ app icon" width="120" height="120" style="border-radius:26px"><p class="hint">App icon. Press and hold to save it.</p></div>
 </main>
 <div id="toast" role="status"></div>
@@ -567,6 +567,23 @@ function showTest(l){const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||
  document.body.appendChild(b);b.querySelector("#tOk").onclick=()=>b.remove()}
 async function addRow(l){const v=($("#csv").value||"").trim();if(v.split(/\r?\n/).some(x=>x.trim()===l.trim())){toast("Already logged");return}
  $("#csv").value=(v||HDRP)+"\n"+l.trim();isDemo=false;analyze(parse($("#csv").value));await put("log",{csv:$("#csv").value,v:1});toast("Offer logged")}
+// Offers the shortcut POSTs to the Supabase "offers" function land in public.offers; pull the ones this log lacks.
+const nrm=x=>x.replace(/\s+/g," ").trim();
+async function pullOffers(manual){
+  if(!sb||!sbUser){if(manual)toast("Sign in under Settings to pull offers");return 0}
+  try{
+    const r=await tmo(sb.from("offers").select("row_text").order("ts",{ascending:true}).order("id",{ascending:true}).limit(5000),15000);
+    if(r.error){if(manual)toast("Could not read offers: "+r.error.message);return 0}
+    const v=($("#csv").value||"").trim(),old=v?v.split(/\r?\n/):[],have=new Set(old.map(nrm));
+    const add=[];for(const o of r.data||[]){const l=(o.row_text||"").trim();if(l&&!have.has(nrm(l))){have.add(nrm(l));add.push(l)}}
+    if(!add.length){if(manual)toast("No new offers from the shortcut");return 0}
+    const out=[...(old.length?old:HDRP.split("\n")),...add].join("\n");
+    $("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1});
+    toast(add.length+" new offer"+(add.length===1?"":"s")+" from the shortcut");return add.length;
+  }catch(e){if(manual)toast("Could not reach your offers");return 0}
+}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&appReady)pullOffers()});
+$("#pullOffers").onclick=()=>pullOffers(true);
 $("#pasteRows").onclick=async()=>{try{await ingest(await navigator.clipboard.readText())}catch(e){toast("Paste blocked")}};
 const PGS=[["log","Log","Paste or load your offers log"],["earn","Earnings","Read your monthly statements"],["hist","History","Load your DoorDash data archive"],["sync","Handoff","Export or import for another AI"]];
 let PIN={};try{PIN=JSON.parse(localStorage.getItem("hh_pins")||"{}")}catch(e){}
@@ -579,8 +596,8 @@ let appReady=false;
 async function processIncomingHash(){
   if(!appReady)return;
   const raw=location.hash;
-  const hm=raw.match(/^#add=(.+)$/);
-  const tm=raw.match(/^#test=(.+)$/);
+  const hm=raw.match(/^#add=(.+)$/i);
+  const tm=raw.match(/^#test=(.+)$/i);
   if(!hm&&!tm)return;
   // Clear the fragment before awaiting storage so the same URL cannot be replayed.
   history.replaceState(null,"",location.pathname+location.search);
@@ -600,6 +617,7 @@ window.addEventListener("hashchange",()=>{
   const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
+  await pullOffers();
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
