@@ -621,7 +621,7 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-wipe
  if(all||w==="statements"){(Object.keys(STM)).forEach(k=>{if(S.monthly)delete S.monthly[k]});STM={};await put("statements",{v:1,s:{}});await put("settings",S);fillZg();renderEarn()}
  if(all||w==="ca"){CA={};await put("ca",{v:1,w:{}});renderCA()}
  if(all||w==="log"){$("#csv").value="";await put("log",{csv:"",v:1});analyze([])}
- if(all){S={...DEF};await put("settings",S);drawFields();setAcc();try{["hh_dirty"].forEach(k=>localStorage.removeItem(k))}catch(x){}}
+ if(all){S={...DEF};await put("settings",S);drawFields();setAcc();/* Keep failed cloud writes marked dirty so cleared data is retried, not resurrected. */}
  if(all||w==="files"){const n=await wipeFiles();if(w==="files"){toast(n?n+" file"+(n>1?"s":"")+" deleted":"No saved files found");return}}
  analyze(parse($("#csv").value));refreshFirst();try{renderMaster()}catch(x){}
  toast(all?"Everything wiped":"Deleted")});
