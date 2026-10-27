@@ -468,6 +468,10 @@ $("#seg").onclick=e=>{const b=e.target.closest("button");if(!b)return;PER=b.data
 $("#runSc").onclick=()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(CFG.shortcutName)};
 $("#getSc").onclick=()=>{CFG.shortcutLink?location.href=CFG.shortcutLink:toast("Add your iCloud link to CFG in index.html")};
 const HDRP="| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |\n|---|---|---|---|---|---|---|---|---|---|---|";
+function showTest(l){const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||"").split(/\r?\n/).some(x=>x.trim()===l.trim());
+ const b=document.createElement("div");b.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px";
+ b.innerHTML=`<div class="card" style="max-width:360px;width:100%"><h2 style="font-size:17px">TEST received</h2>${r&&r.date?`<p>${esc(r.date)} · ${esc(r.payout)} · ${esc(r.miles)} mi · ${esc(r.items)} items · ${esc(r.verdict)} · ${esc(r.choice)}</p>`:`<p>Link arrived, but the row could not be read.</p>`}<p class="hint">${dup?"This row is already in your log. ":"This row would be added. "}Nothing was saved or counted. Stored in: ${store?"your account":"this browser"}.</p><button class="btn" id="tOk">OK</button></div>`;
+ document.body.appendChild(b);b.querySelector("#tOk").onclick=()=>b.remove()}
 async function addRow(l){const v=($("#csv").value||"").trim();if(v.split(/\r?\n/).some(x=>x.trim()===l.trim())){toast("Already logged");return}
  $("#csv").value=(v||HDRP)+"\n"+l.trim();isDemo=false;analyze(parse($("#csv").value));await put("log",{csv:$("#csv").value,v:1});toast("Offer logged")}
 $("#pasteRows").onclick=async()=>{try{await ingest(await navigator.clipboard.readText())}catch(e){toast("Paste blocked")}};
@@ -482,7 +486,7 @@ applyPins();
   drawFields();renderGame([],[]);
   await initStore();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}}
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}const tm=location.hash.match(/^#test=(.+)$/);if(tm){showTest(decodeURIComponent(tm[1]));history.replaceState(null,"",location.pathname)}}
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
