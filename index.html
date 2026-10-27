@@ -139,7 +139,7 @@ nav button[hidden]{display:none}
 
 <section id="settings" hidden>
   <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
-  <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Nothing here changes your log or your numbers.</p><div class="row"><button class="btn ghost" id="tstLink">Send a test offer</button><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
+  <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Turn on test mode, then run your shortcut. Offers that arrive are shown as a preview and are not logged or counted.</p><div class="pg"><div style="flex:1;padding:8px 0"><b>Test mode</b><br><small class="hint" id="tstState"></small></div><label class="sw"><input type="checkbox" id="tstMode" aria-label="Test mode"><span></span></label></div><p class="hint" id="tstLast" style="margin-top:10px"></p><div class="row"><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
   <div class="card"><h2 style="font-size:17px">Pages</h2><p class="hint">Tap a bar to open that page. Use its switch to add or remove it from the menu.</p><div id="pgList"></div></div>
 </section>
 <section id="log" hidden>
@@ -551,7 +551,13 @@ function renderCA(){const el=$("#ca");if(!el)return;
   $("#caH").oninput=e=>{CAH=+e.target.value;upd()};upd()}
 $("#seg").onclick=e=>{const b=e.target.closest("button");if(!b)return;PER=b.dataset.p;document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));renderGame(LG[0],LG[1])};
 $("#runSc").onclick=()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(CFG.shortcutName)};
-$("#tstLink").onclick=()=>{const d=new Date(),z=n=>String(n).padStart(2,"0");showTest("| "+d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+" "+z(d.getHours())+":"+z(d.getMinutes())+" | 12.50 | 4.2 | 3 | 2.98 | 9.10 | 21.40 | TAKE IT | 89 | Accept | 25 |")};
+let TESTMODE=false;try{TESTMODE=localStorage.getItem("hh_test")==="1"}catch(e){}
+function drawTest(){$("#tstMode").checked=TESTMODE;$("#tstState").textContent=TESTMODE?"ON: offers from the shortcut are previewed only.":"OFF: offers from the shortcut are logged.";
+ let L=null;try{L=JSON.parse(localStorage.getItem("hh_lastrx")||"null")}catch(e){}
+ $("#tstLast").textContent=L?"Last offer received "+new Date(L.t).toLocaleString()+" ("+(L.test?"previewed":"logged")+"): "+L.row:"No offer received in this browser yet."}
+function noteRx(row,test){try{localStorage.setItem("hh_lastrx",JSON.stringify({t:Date.now(),row:row,test:test}))}catch(e){}drawTest()}
+$("#tstMode").onchange=e=>{TESTMODE=e.target.checked;try{localStorage.setItem("hh_test",TESTMODE?"1":"0")}catch(x){}drawTest();toast(TESTMODE?"Test mode on":"Test mode off")};
+drawTest();
 $("#tstCloud").onclick=async()=>{const m=$("#tstMsg");
  if(!sb){m.textContent="Cloud sync is not available here (offline, or the sync library is blocked). This browser only.";return}
  if(!sbUser){m.textContent="Not signed in. Sign in under Handoff > Cloud sync.";return}
@@ -561,7 +567,7 @@ $("#tstCloud").onclick=async()=>{const m=$("#tstMsg");
  catch(e){m.textContent="No answer within 8 seconds. Check your connection and try again."}};
 $("#getSc").onclick=()=>{CFG.shortcutLink?location.href=CFG.shortcutLink:toast("Add your iCloud link to CFG in index.html")};
 const HDRP="| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |\n|---|---|---|---|---|---|---|---|---|---|---|";
-function showTest(l){const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||"").split(/\r?\n/).some(x=>x.trim()===l.trim());
+function showTest(l){noteRx(l.trim(),true);const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||"").split(/\r?\n/).some(x=>x.trim()===l.trim());
  const b=document.createElement("div");b.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px";
  b.innerHTML=`<div class="card" style="max-width:360px;width:100%"><h2 style="font-size:17px">TEST received</h2>${r&&r.date?`<p>${esc(r.date)} · ${esc(r.payout)} · ${esc(r.miles)} mi · ${esc(r.items)} items · ${esc(r.verdict)} · ${esc(r.choice)}</p>`:`<p>Link arrived, but the row could not be read.</p>`}<p class="hint">${dup?"This row is already in your log. ":"This row would be added. "}Nothing was saved or counted. Stored in: ${(store||sbUser)?"your account":"this browser"}.</p><button class="btn" id="tOk">OK</button></div>`;
  document.body.appendChild(b);b.querySelector("#tOk").onclick=()=>b.remove()}
@@ -579,7 +585,7 @@ applyPins();
   drawFields();renderGame([],[]);
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}const tm=location.hash.match(/^#test=(.+)$/);if(tm){showTest(decodeURIComponent(tm[1]));history.replaceState(null,"",location.pathname)}}
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){const row=decodeURIComponent(hm[1]);if(TESTMODE)showTest(row);else{noteRx(row.trim(),false);await addRow(row)}history.replaceState(null,"",location.pathname)}const tm=location.hash.match(/^#test=(.+)$/);if(tm){showTest(decodeURIComponent(tm[1]));history.replaceState(null,"",location.pathname)}}
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
