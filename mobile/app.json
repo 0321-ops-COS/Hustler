@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Hustle HQ",
+    "slug": "hustle-hq",
+    "scheme": "hustlehq",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#04070d",
+    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#04070d" },
+    "ios": {
+      "bundleIdentifier": "com.cosops.hustlehq",
+      "supportsTablet": false,
+      "infoPlist": { "LSApplicationQueriesSchemes": ["shortcuts"] }
+    },
+    "android": {
+      "package": "com.cosops.hustlehq",
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#04070d" }
+    },
+    "web": { "favicon": "./assets/favicon.png" },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": false }
+  }
+}
