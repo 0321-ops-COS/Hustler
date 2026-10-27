@@ -607,7 +607,7 @@ function masterLog(text){const seen=new Set(),out=[];
  return HDRM+(out.length?"\n"+out.join("\n"):"")}
 const logRows=t=>Math.max(0,t.split("\n").length-2);
 async function commitLog(out){$("#csv").value=out;isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
-async async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
+async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 
 // delete data: per type or everything, from browser and account
 async function wipeFiles(){if(!sb||!sbUser)return 0;let n=0;try{const l=await tmo(sb.storage.from("uploads").list(sbUser.id,{limit:1000}),15000);const ps=(l.data||[]).map(f=>sbUser.id+"/"+f.name);if(ps.length){const r=await tmo(sb.storage.from("uploads").remove(ps),30000);if(!r.error)n=ps.length}}catch(e){}return n}
