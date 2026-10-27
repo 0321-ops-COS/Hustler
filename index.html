@@ -391,8 +391,9 @@ $("#cpBrief").onclick=async()=>{try{await navigator.clipboard.writeText(brief()+
 async function ingest(t){let j=null;try{j=JSON.parse(t)}catch(e){}
  if(j&&(j.settings||j.csv!==undefined)){if(j.settings){S={...DEF,monthly:j.settings.monthly||{},zoneGas:j.settings.zoneGas||{}};drawFields();await put("settings",S)}
   if(j.csv!==undefined){$("#csv").value=j.csv;await put("log",{csv:j.csv,v:1});analyze(parse(j.csv))}toast("Handoff imported");return}
- const HDR="date,time,zone,payout,miles,items,minutes,verdict,choice";let L=t.trim().split(/\r?\n/).filter(Boolean);if(L.length&&/^\s*\d/.test(L[0]))L.unshift(HDR);
- if(L.length>1){const old=($("#csv").value||"").trim().split(/\r?\n/).filter(Boolean),have=new Set(old),add=L.slice(1).filter(x=>!have.has(x)),out=[old.length?old[0]:L[0],...old.slice(1),...add].join("\n");$("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1});toast(add.length+" new rows added")}else toast("Could not read that file")}
+ const before=masterLog($("#csv").value),n0=before.split("\n").length,out=masterLog(before+"\n"+t),n1=out.split("\n").length;
+ if(n1<2){toast("Could not read that file");return}
+ await commitLog(out);toast((n1-n0)+" new rows added")}
 let STM={};
 const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 async function pdfText(f){const L=window.pdfjsLib;if(!L)throw 0;L.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";const d=await L.getDocument({data:await f.arrayBuffer()}).promise,p=await d.getPage(1),c=await p.getTextContent();return c.items.map(x=>x.str).join(" ")}
@@ -416,7 +417,7 @@ function renderEarn(){const el=$("#earnOut");if(!el)return;const ks=Object.keys(
 $("#stmFile").onchange=async e=>{await takeStm([...e.target.files]);e.target.value=""};
 $("#stmPaste").onclick=()=>takeStm([$("#stmTxt").value],true);
 const dz3=$("#drop3");["dragover","dragenter"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor=""}));dz3.addEventListener("drop",e=>takeStm([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name))));
-const HDR2="date,time,zone,payout,miles,items,minutes,verdict,choice,src";
+const HDR2="date,time,zone,payout,miles,items,minutes,verdict,choice,src,permile,net,hourly,rate,slack";
 const CITIES=["Murrieta","Temecula","Lake Elsinore","Menifee","Corona","Wildomar","Perris","Winchester","Sun City","Canyon Lake","Fontana","Riverside","Hemet","Norco","Eastvale","Moreno Valley"];
 function adjust(d){const M=S.monthly||{},sm={},ix={},pc={};
  d.forEach((r,i)=>{if(r.src==="archive"){const k=(r.date||"").slice(0,7);sm[k]=(sm[k]||0)+num(r.minutes);(ix[k]=ix[k]||[]).push(i)}});
@@ -493,7 +494,7 @@ $("#c_go").onclick=()=>{const g=num($("#c_g").value);if(g>0&&g!==S.gas){S.gas=g;
  $("#c_out").innerHTML=`<div class="card" style="text-align:center"><div class="num ${v.ok?"good":"bad"}" style="font-size:56px">${v.ok?"TAKE IT":"SKIP"}</div><div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(v.net)}</div><span>Net after car</span></div><div class="stat"><div class="num money">${$f(v.hr)}</div><span>Net $/hr (need ${$f(v.reqH)})</span></div><div class="stat"><div class="num money">${$f(v.pm)}</div><span>Payout $/mile (need ${$f(v.reqM)})</span></div><div class="stat"><div class="num">${Math.round(v.mn)}</div><span>Minutes</span></div></div></div>`};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-$("#load").onclick=async()=>{const d=parse($("#csv").value);if(!d.length){toast("Need a header row plus offers");return}
+$("#load").onclick=async()=>{const mm=masterLog($("#csv").value);if(mm.split("\n").length>1)$("#csv").value=mm;const d=parse($("#csv").value);if(!d.length){toast("Need a header row plus offers");return}
   isDemo=false;analyze(d);const w=await put("log",{csv:$("#csv").value,v:1});
   $("#saveInfo").textContent=w==="account"?"Saved to your account.":w?"Saved in this browser only.":"Could not save.";
   document.querySelector('[data-t="dash"]').click()};
@@ -565,8 +566,20 @@ function showTest(l){const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||
  const b=document.createElement("div");b.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px";
  b.innerHTML=`<div class="card" style="max-width:360px;width:100%"><h2 style="font-size:17px">TEST received</h2>${r&&r.date?`<p>${esc(r.date)} · ${esc(r.payout)} · ${esc(r.miles)} mi · ${esc(r.items)} items · ${esc(r.verdict)} · ${esc(r.choice)}</p>`:`<p>Link arrived, but the row could not be read.</p>`}<p class="hint">${dup?"This row is already in your log. ":"This row would be added. "}Nothing was saved or counted. Stored in: ${(store||sbUser)?"your account":"this browser"}.</p><button class="btn" id="tOk">OK</button></div>`;
  document.body.appendChild(b);b.querySelector("#tOk").onclick=()=>b.remove()}
-async function addRow(l){const v=($("#csv").value||"").trim();if(v.split(/\r?\n/).some(x=>x.trim()===l.trim())){toast("Already logged");return}
- $("#csv").value=(v||HDRP)+"\n"+l.trim();isDemo=false;analyze(parse($("#csv").value));await put("log",{csv:$("#csv").value,v:1});toast("Offer logged")}
+// ONE master log: every path (shortcut offers, pasted rows, files, archive) is converted to this CSV and saved once; every page reads it through analyze().
+function pipeToCsv(l){const c=l.split("|").slice(1,-1).map(x=>x.trim());
+ if(c.length<10||!/^\d{4}-\d\d-\d\d/.test(c[0])||isNaN(parseFloat(c[1].replace(/[$,]/g,""))))return null;
+ const dt=c[0].split(/\s+/),m=num(c[2]),it=num(c[3]),net=num(c[5]),hr=num(c[6]);
+ const min=hr>0&&net>0?+(net/hr*60).toFixed(1):+(10+m*2.5+it*2).toFixed(1);
+ return[dt[0],dt[1]||"","",c[1],c[2],c[3],min,c[7],c[9]||"","shortcut",c[4],c[5],c[6],c[8],c[10]||""].map(x=>String(x).replace(/[,\r\n]/g,"")).join(",")}
+function masterLog(text){const seen=new Set(),out=[HDR2];
+ for(const raw of String(text||"").split(/\r?\n/)){let l=raw.trim();if(!l)continue;
+  if(l.startsWith("|")){l=pipeToCsv(l);if(!l)continue}
+  else if(/^date\s*,/i.test(l)||!l.includes(","))continue;
+  if(seen.has(l))continue;seen.add(l);out.push(l)}
+ return out.join("\n")}
+async function commitLog(out){$("#csv").value=out;isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
+async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 // Offers the shortcut POSTs to the Supabase "offers" function land in public.offers; pull the ones this log lacks.
 const nrm=x=>x.replace(/\s+/g," ").trim();
 async function pullOffers(manual){
@@ -574,12 +587,11 @@ async function pullOffers(manual){
   try{
     const r=await tmo(sb.from("offers").select("row_text").order("ts",{ascending:true}).order("id",{ascending:true}).limit(5000),15000);
     if(r.error){if(manual)toast("Could not read offers: "+r.error.message);return 0}
-    const v=($("#csv").value||"").trim(),old=v?v.split(/\r?\n/):[],have=new Set(old.map(nrm));
-    const add=[];for(const o of r.data||[]){const l=(o.row_text||"").trim();if(l&&!have.has(nrm(l))){have.add(nrm(l));add.push(l)}}
-    if(!add.length){if(manual)toast("No new offers from the shortcut");return 0}
-    const out=[...(old.length?old:HDRP.split("\n")),...add].join("\n");
-    $("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1});
-    toast(add.length+" new offer"+(add.length===1?"":"s")+" from the shortcut");return add.length;
+    const raw=($("#csv").value||"").trim(),cur=masterLog(raw),out=masterLog(cur+"\n"+(r.data||[]).map(o=>o.row_text||"").join("\n"));
+    const added=out.split("\n").length-cur.split("\n").length;
+    if(added<=0&&cur===raw){if(manual)toast("No new offers from the shortcut");return 0}
+    await commitLog(out);
+    toast(added>0?added+" new offer"+(added===1?"":"s")+" from the shortcut":"Log tidied");return added;
   }catch(e){if(manual)toast("Could not reach your offers");return 0}
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&appReady)pullOffers()});
@@ -614,7 +626,7 @@ window.addEventListener("hashchange",()=>{
   drawFields();renderGame([],[]);
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=mc.split("\n").length>1?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
   await pullOffers();
