@@ -150,7 +150,7 @@ nav button[hidden]{display:none}
     <p class="hint">This is your master log, one table the whole app reads. Each row looks like what the shortcut writes: | Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |. Anything you paste or load is converted to it.</p>
     <textarea id="csv" placeholder="| 2026-10-27 14:46| 26.50 | 9.1 | 6 |2.91 | 22.42| 30.06 | TAKE IT | 80.00 | Accept | 15.25 |"></textarea>
     <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button><button class="btn ghost" id="clear">Clear</button></div>
-    <label id="drop" style="display:block;margin-top:12px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop offers.txt or data_archive.zip here, or tap to choose<input type="file" id="file" accept=".csv,.txt,.json,.zip" hidden><small style="display:block;color:var(--mut);margin-top:4px">New rows are added to your saved log. A missing header row is added for you.</small></label>
+    <p class="hint">Add your offers file or data_archive.zip on the Data page. <button class="btn ghost" style="padding:4px 10px" data-open="data">Open Data page</button></p>
     <div id="check" style="margin-top:12px"></div>
     <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
   </div>
@@ -184,16 +184,14 @@ nav button[hidden]{display:none}
 <section id="earn" hidden>
   <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card"><h2 style="font-size:17px">Monthly statements</h2>
-    <label id="drop3" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop your DoorDash statement PDFs here, or tap to choose<input type="file" id="stmFile" accept=".pdf" multiple hidden><small style="display:block;color:var(--mut);margin-top:4px">Reads each month's total and payout count in your browser. Each month also sets your real pay.</small></label>
-    <textarea id="stmTxt" placeholder="Or paste a statement's text here" style="min-height:70px;margin-top:10px"></textarea>
-    <div class="row"><button class="btn ghost" id="stmPaste">Read pasted text</button></div></div>
+<p class="hint">Add statement PDFs on the Data page. <button class="btn ghost" style="padding:4px 10px" data-open="data">Open Data page</button></p></div>
   <div id="earnOut"></div>
 </section>
 
 <section id="hist" hidden>
   <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card"><h2 style="font-size:17px">DoorDash archive</h2>
-    <label id="drop2" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop data_archive.zip here or tap to choose<input type="file" id="file3" accept=".zip,.csv" hidden><small style="display:block;color:var(--mut);margin-top:4px">Only the delivery file is read, inside your browser. Your personal info file is ignored and never saved. Pay and miles are estimated from your settings. Drop your statement PDFs in Earn to correct them.</small></label></div>
+    <p class="hint">Add data_archive.zip on the Data page. <button class="btn ghost" style="padding:4px 10px" data-open="data">Open Data page</button></p></div>
   <div id="histOut"></div>
 </section>
 
