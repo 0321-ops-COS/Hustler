@@ -1,5 +1,7 @@
 # Hustle HQ
 
+**Open the page:** https://0321-ops-cos.github.io/Hustler/
+
 Single-page DoorDash offer analyzer. Runs entirely in your browser; your log and settings stay in that browser's storage.
 
 - `index.html` is the whole app (plus PWA files: `manifest.webmanifest`, `sw.js`, icons).
