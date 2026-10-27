@@ -92,6 +92,7 @@ nav button[hidden]{display:none}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <main>
@@ -138,6 +139,7 @@ nav button[hidden]{display:none}
 
 <section id="settings" hidden>
   <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
+  <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Nothing here changes your log or your numbers.</p><div class="row"><button class="btn ghost" id="tstLink">Send a test offer</button><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
   <div class="card"><h2 style="font-size:17px">Pages</h2><p class="hint">Tap a bar to open that page. Use its switch to add or remove it from the menu.</p><div id="pgList"></div></div>
 </section>
 <section id="log" hidden>
@@ -186,6 +188,7 @@ nav button[hidden]{display:none}
     <div class="row"><button class="btn" id="exp">Export handoff file</button><button class="btn ghost" id="cpBrief">Copy AI brief</button><label class="btn ghost" style="color:var(--tx)">Import file<input type="file" id="file2" accept=".json,.csv,.txt" hidden></label></div>
     <p class="hint">The AI brief is plain text with your rules, columns, settings and log. Paste it into any AI to continue.</p>
   </div>
+  <div class="card" id="cloudCard"><h2 style="font-size:17px">Cloud sync</h2><p class="hint" id="cloudMsg"></p><div id="cloudBody"></div></div>
   <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">Run the analyzer from the Scoreboard. To bring offers back: have the shortcut copy its log row, then tap Paste copied rows in Log, or pick offers.txt there. A web app on iPhone cannot read your Shortcuts folder by itself.</p></div>
   <div class="card" style="text-align:center"><img id="ico" alt="Hustle HQ app icon" width="120" height="120" style="border-radius:26px"><p class="hint">App icon. Press and hold to save it.</p></div>
 </main>
@@ -196,7 +199,7 @@ const $=s=>document.querySelector(s);
 function menu(o){$("#nav").classList.toggle("open",o);$("#scrim").classList.toggle("on",o);$("#menuBtn").setAttribute("aria-expanded",o)}
 $("#menuBtn").onclick=()=>menu(!$("#nav").classList.contains("open"));$("#scrim").onclick=()=>menu(false);
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>menu(false)));
-const CFG={shortcutName:"DoorDash Offer Analyzer",shortcutLink:"",appUrl:""};
+const CFG={shortcutName:"DoorDash Offer Analyzer",shortcutLink:"",appUrl:"",supabaseUrl:"https://xpcglmabtsceyzfrdiky.supabase.co",supabaseKey:"sb_publishable_-_9Q2cS-64BaU5-uQJDVlQ_c1k_IpeO"};
 const DEF={accept:89,estPay:7,estMph:20,mpg:17.5,wear:0.12,gas:5.75,rampTop:90,rampLow:85,floorMile:0.75,floorHour:10,baseMile:1.5,baseHour:18,bigItems:3,bigMile:2,bigHour:20,emergency:80,taxRate:0.70,target:85,caWage:16.90,caPct:120,caMile:0.37};
 const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"Ramp top (% acceptance)",rampLow:"Ramp low (% acceptance)",floorMile:"Floor $/mile",floorHour:"Floor $/hour",baseMile:"Base $/mile",baseHour:"Base $/hour",bigItems:"Big order: items over",bigMile:"Big order $/mile",bigHour:"Big order $/hour",emergency:"Emergency rate (%)",taxRate:"Mileage deduction rate ($/mi)",target:"Float target (% acceptance)",caWage:"CA minimum wage ($/hr)",caPct:"CA guarantee (% of min wage per active hour)",caMile:"CA guarantee per mile ($)"};
 let S={...DEF},store=null,uid=null,isDemo=false;
@@ -209,21 +212,97 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
   ["dash","calc","whatif","log","earn","hist","sync","settings"].forEach(id=>$("#"+id).hidden=id!==b.dataset.t);if(b.dataset.t==="whatif")drawWf()});
 
-// storage: account db when available, else this browser only
+// storage: signed-in cloud account (Supabase) when available, always mirrored to this browser
+let sb=null,sbUser=null;
+const KEYS=["settings","log","archive","statements","ca"];
+const tmo=(p,ms=8000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
+function dirtyList(){try{return JSON.parse(localStorage.getItem("hh_dirty")||"[]")}catch(e){return[]}}
+function setDirty(k,on){const d=new Set(dirtyList());on?d.add(k):d.delete(k);try{localStorage.setItem("hh_dirty",JSON.stringify([...d]))}catch(e){}}
+function localGet(k){try{const v=localStorage.getItem("hh_"+k);return v?JSON.parse(v):null}catch(e){return null}}
 async function initStore(){
   try{
     const u=await claude.use("user"),db=await claude.use("db");
     if(u&&db){uid=await u.id();if(uid){store=db.collection("data/users/"+uid);}}
   }catch(e){}
+  try{
+    if(!store&&window.supabase&&CFG.supabaseUrl){
+      sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey);
+      const r=await tmo(sb.auth.getSession());sbUser=r&&r.data&&r.data.session?r.data.session.user:null;
+      sb.auth.onAuthStateChange((ev,ss)=>{sbUser=ss?ss.user:null;drawCloud()});
+    }
+  }catch(e){sb=null;sbUser=null}
+}
+async function cloudPut(k,obj){
+  if(!sb||!sbUser)return false;
+  try{const r=await tmo(sb.from("hh_store").upsert({user_id:sbUser.id,k,v:obj,updated_at:new Date().toISOString()},{onConflict:"user_id,k"}));return!r.error}catch(e){return false}
+}
+async function cloudGet(k){
+  if(!sb||!sbUser)return undefined;
+  try{const r=await tmo(sb.from("hh_store").select("v").eq("k",k).maybeSingle());if(r.error)return undefined;return r.data?r.data.v:null}catch(e){return undefined}
 }
 async function put(k,obj){
   try{if(store){await store.doc(k).set(obj);return"account"}}catch(e){}
-  try{localStorage.setItem("hh_"+k,JSON.stringify(obj));return"browser"}catch(e){return null}
+  let w=null;
+  try{localStorage.setItem("hh_"+k,JSON.stringify(obj));w="browser"}catch(e){}
+  if(sbUser){const ok=await cloudPut(k,obj);setDirty(k,!ok);if(ok)w="account"}
+  return w;
 }
 async function get(k){
   try{if(store){const s=await store.doc(k).get();if(s.exists)return s.data()}}catch(e){}
-  try{const v=localStorage.getItem("hh_"+k);return v?JSON.parse(v):null}catch(e){return null}
+  if(sbUser&&!dirtyList().includes(k)){
+    const c=await cloudGet(k);
+    if(c!==undefined&&c!==null){try{localStorage.setItem("hh_"+k,JSON.stringify(c))}catch(e){}return c}
+  }
+  return localGet(k);
 }
+// push anything this browser has that the account lacks (or that failed to upload earlier)
+async function syncNow(){
+  let n=0;
+  for(const k of KEYS){
+    const l=localGet(k);if(!l)continue;
+    const c=await cloudGet(k);
+    if(c===undefined)continue;
+    if(c===null||dirtyList().includes(k)){if(await cloudPut(k,l)){setDirty(k,false);n++}}
+  }
+  return n;
+}
+// keep the original file (zip, statement PDF, offers file) in a private folder of your account
+async function keepFile(f){
+  if(!sb||!sbUser||!f||!f.name)return;
+  try{
+    const p=sbUser.id+"/"+Date.now()+"-"+f.name.replace(/[^\w.\-]+/g,"_");
+    const r=await tmo(sb.storage.from("uploads").upload(p,f,{contentType:f.type||"application/octet-stream"}),180000);
+    const m=$("#cloudMsg");if(m)m.textContent=r.error?"Could not save "+f.name+" to your account.":"Original file saved to your account: "+f.name;
+  }catch(e){}
+}
+function drawCloud(){
+  const b=$("#cloudBody");if(!b)return;
+  if(!sb){b.innerHTML='<p class="hint">Cloud sync is not available right now (offline, or the sync library is blocked). Your data stays in this browser.</p>';return}
+  if(sbUser){
+    b.innerHTML='<p class="hint">Signed in as '+(sbUser.email||"your account")+'. Settings, log, history and statements save to your account, and the original files are kept in a private folder.</p><div class="row"><button class="btn" id="cl_sync">Sync now</button><button class="btn ghost" id="cl_out">Sign out</button></div>';
+  }else{
+    b.innerHTML='<p class="hint">Sign in to save everything to your account and open it on any device. Only you can read your data.</p><div class="fields"><label>Email<input id="cl_e" type="email" autocomplete="username"></label><label>Password<input id="cl_p" type="password" autocomplete="current-password"></label></div><div class="row" style="margin-top:10px"><button class="btn" id="cl_in">Sign in</button><button class="btn ghost" id="cl_up">Create account</button></div>';
+  }
+}
+document.addEventListener("click",async e=>{
+  const id=e.target.id;if(!/^cl_(in|up|out|sync)$/.test(id)||!sb)return;
+  const msg=t=>{const m=$("#cloudMsg");if(m)m.textContent=t};
+  const em=($("#cl_e")||{}).value,pw=($("#cl_p")||{}).value;
+  try{
+    if(id==="cl_out"){await sb.auth.signOut();location.reload();return}
+    if(id==="cl_sync"){msg("Syncing...");const n=await syncNow();msg(n?"Uploaded "+n+" item"+(n>1?"s":"")+" to your account.":"Everything is already in your account.");return}
+    if(!em||!pw){msg("Enter your email and password.");return}
+    msg("Working...");
+    if(id==="cl_in"){
+      const r=await tmo(sb.auth.signInWithPassword({email:em.trim(),password:pw}),15000);
+      if(r.error){msg(r.error.message);return}
+      sbUser=r.data.user;await syncNow();location.reload();return}
+    const r=await tmo(sb.auth.signUp({email:em.trim(),password:pw,options:{emailRedirectTo:location.origin+location.pathname}}),15000);
+    if(r.error){msg(r.error.message);return}
+    if(r.data.session){sbUser=r.data.user;await syncNow();location.reload();return}
+    msg("Check your email to confirm the account, then come back and sign in.");
+  }catch(x){msg("That took too long or could not connect. Try again.")}
+});
 
 // settings
 function fillZg(){const ma=$("#ma");if(ma)ma.value=Object.entries(S.monthly||{}).map(e=>e[0]+"="+e[1][0]+(e[1][1]?","+e[1][1]:"")).join("\n");const el=$("#zg");if(el)el.value=Object.entries(S.zoneGas||{}).map(e=>e.join("=")).join("\n")}
@@ -318,7 +397,7 @@ let STM={};
 const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
 async function pdfText(f){const L=window.pdfjsLib;if(!L)throw 0;L.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";const d=await L.getDocument({data:await f.arrayBuffer()}).promise,p=await d.getPage(1),c=await p.getTextContent();return c.items.map(x=>x.str).join(" ")}
 function stmParse(t){const m=t.match(/(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4}) Statement/),a=t.match(/Total Payouts\s*\$([\d,]+\.\d\d)/),c=t.match(/Payouts \((\d+)\)/);return m&&a?{k:m[2]+"-"+String(MN.indexOf(m[1])+1).padStart(2,"0"),total:num(a[1]),n:c?+c[1]:0}:null}
-async function takeStm(items,paste){let got=0;for(const f of items){try{const s=stmParse(paste?f:await pdfText(f));if(s){STM[s.k]=s;got++}}catch(e){}}
+async function takeStm(items,paste){let got=0;if(!paste)items.forEach(f=>keepFile(f));for(const f of items){try{const s=stmParse(paste?f:await pdfText(f));if(s){STM[s.k]=s;got++}}catch(e){}}
  if(!got){toast("Could not read a statement. Try pasting its text.");return}
  S.monthly=S.monthly||{};Object.values(STM).forEach(s=>{S.monthly[s.k]=[s.total,(S.monthly[s.k]||[])[1]||0]});
  await put("statements",{v:1,s:STM});await put("settings",S);fillZg();analyze(parse($("#csv").value));renderEarn();toast(got+" statement"+(got>1?"s":"")+" read")}
@@ -352,7 +431,7 @@ async function toLog(){const O=ARCH.map(r=>{const b=+new Date(r[2]+":00Z"),p=+ne
  const out=[HDR2,...old,...lines.filter(l=>!have.has(l))].join("\n");
  $("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1})}
 let ARCH=[];
-async function route(f){const n=f.name.toLowerCase();if(n.endsWith(".zip"))return importZip(f);const t=await f.text();if(/ORDER_CREATED_TIME/i.test(t.slice(0,300)))return loadDeliv(t);return ingest(t)}
+async function route(f){keepFile(f);const n=f.name.toLowerCase();if(n.endsWith(".zip"))return importZip(f);const t=await f.text();if(/ORDER_CREATED_TIME/i.test(t.slice(0,300)))return loadDeliv(t);return ingest(t)}
 function csvRows(t){const o=[];let r=[],c="",q=0;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=0}else c+=ch}else if(ch=='"')q=1;else if(ch==','){r.push(c);c=""}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);c="";if(r.length>1||r[0])o.push(r);r=[]}else c+=ch}if(c||r.length){r.push(c);o.push(r)}return o}
 async function importZip(f){if(!window.JSZip){toast("Zip reader did not load");return}
  try{const z=await JSZip.loadAsync(f),e=Object.values(z.files).find(x=>/delivery_information\.csv$/i.test(x.name));
@@ -450,29 +529,41 @@ const hm2h=v=>{v=String(v||"").trim();const m=v.match(/^(\d+)\s*[h:]\s*(\d+)?/i)
 function caAuto(k){const R=(LG[0]||[]).filter(r=>r.t&&weekKey(r.date)===k);return{pay:R.reduce((a,r)=>a+r.p,0),hours:R.reduce((a,r)=>a+r.min,0)/60,miles:R.reduce((a,r)=>a+r.m,0),n:R.length}}
 function caMerge(k){const a=caAuto(k),m=CA[k]||{};return{...m,pay:m.pay>0?m.pay:a.pay,hours:m.hours>0?m.hours:a.hours,miles:m.miles>0?m.miles:a.miles,n:a.n,au:{pay:!(m.pay>0),hours:!(m.hours>0),miles:!(m.miles>0)}}}
 function caEst(e,logMiles){const h=e.hours||0,mi=e.miles>0?e.miles:logMiles,g=S.caPct/100*S.caWage*h+S.caMile*mi,adj=Math.max(0,g-(e.pay||0));return{g,mi,adj,miSrc:e.miles>0&&!(e.au&&e.au.miles)?"entered":"from log"}}
+let CAH=null;
+const CAMAX=84;
 function renderCA(){const el=$("#ca");if(!el)return;
-  const wk=$("#caWk")?$("#caWk").value:weekKey(iso(new Date())),cur=CA[wk]||{},mg=caMerge(wk),AU=caAuto(wk);
-  const R=(LG[0]||[]).filter(r=>r.t&&weekKey(r.date)===wk),lm=R.reduce((a,r)=>a+r.m,0);
-  const ks=[...new Set([...Object.keys(CA),...(LG[0]||[]).filter(r=>r.t&&/^\d{4}-\d\d-\d\d/.test(r.date||"")).map(r=>weekKey(r.date))])].sort().reverse().slice(0,8);
-  const row=k=>{const e=caMerge(k),x=caEst(e,(LG[0]||[]).filter(r=>r.t&&weekKey(r.date)===k).reduce((a,r)=>a+r.m,0));const act=e.actual!=null&&e.actual!=="";
-    return`<tr><td>${k}</td><td>${$f(e.pay||0)}</td><td>${$f(x.adj)}</td><td>${act?$f(num(e.actual)):"pending"}</td><td>${$f((e.pay||0)+(e.tips||0)+(act?num(e.actual):x.adj))}</td></tr>`};
-  const x=caEst(mg,lm),act=cur.actual!=null&&cur.actual!=="";
-  el.innerHTML=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">DoorDash tops up your delivery pay (not tips) to ${S.caPct}% of minimum wage per active hour plus ${$f(S.caMile)} per mile. The real adjustment posts the Monday after the week ends. It fills itself from your log: pay is the payouts you accepted, active time is the estimated minutes for each accepted offer, miles come from the log. Type any number below to replace the estimate. Offer payouts can include tips, which makes the estimate a little low.</p>
-  <div class="fields" style="margin-top:12px"><label>Week of (Monday)<input id="caWk" value="${wk}"></label><label>DoorDash pay ($)<input inputmode="decimal" id="caPay" value="${cur.pay??""}" placeholder="auto ${AU.pay.toFixed(2)}"></label><label>DoorDash tips ($)<input inputmode="decimal" id="caTip" value="${cur.tips??""}"></label><label>Active time in California (like 17h 58m)<input id="caHrs" value="${cur.hours?Math.floor(cur.hours)+"h "+Math.round((cur.hours%1)*60)+"m":""}" placeholder="auto ${Math.floor(AU.hours)}h ${Math.round((AU.hours%1)*60)}m"></label><label>Miles (blank = use log)<input inputmode="decimal" id="caMi" value="${cur.miles??""}"></label><label>Actual adjustment ($, fill in Monday)<input inputmode="decimal" id="caAct" value="${act?cur.actual:""}"></label></div>
-  <div class="row"><button class="btn" id="caSave">Save week</button></div>
-  ${mg.hours?`<div class="grid" style="margin-top:12px"><div class="stat"><div class="num">${$f(x.g)}</div><span>Guaranteed earnings</span></div><div class="stat"><div class="num money">${act?$f(num(cur.actual)):$f(x.adj)}</div><span>${act?"Actual":"Estimated"} adjustment</span></div><div class="stat"><div class="num">${$f((mg.pay||0)+(cur.tips||0)+(act?num(cur.actual):x.adj))}</div><span>Week total with adjustment</span></div><div class="stat"><div class="num">${x.mi.toFixed(0)}</div><span>Miles (${x.miSrc})</span></div></div>${act?`<p class="hint">Estimate was ${$f(x.adj)}, actual ${$f(num(cur.actual))}.</p>`:`<p class="hint">Pending. Estimated from ${mg.n} accepted offer${mg.n===1?"":"s"}${mg.au.hours?" (active time is estimated)":""}. Enter your real numbers from Earnings, Payout details when you have them.</p>`}`:""}
-  ${ks.length?`<div class="wrap" style="margin-top:12px"><table><tr><th>Week of</th><th>DD pay</th><th>Est. adj.</th><th>Actual adj.</th><th>Total</th></tr>${ks.map(row).join("")}</table></div>`:""}`;
-  $("#caSave").onclick=async()=>{const k=($("#caWk").value||"").trim();if(!/^\d{4}-\d\d-\d\d$/.test(k)){toast("Use a date like 2026-10-19");return}
-    const a=$("#caAct").value.trim();CA[weekKey(k)]={pay:num($("#caPay").value),tips:num($("#caTip").value),hours:hm2h($("#caHrs").value),miles:num($("#caMi").value)||0,actual:a===""?null:num(a)};
-    const w=await put("ca",{v:1,w:CA});toast(w?"Week saved":"Could not save");renderCA()};
-  $("#caWk").onchange=renderCA}
+  const wk=weekKey(iso(new Date())),AU=caAuto(wk),ok=AU.n>0&&AU.hours>0;
+  const rate=S.caPct/100*S.caWage,hm=h=>Math.floor(h)+"h "+String(Math.round((h%1)*60)).padStart(2,"0")+"m";
+  if(!ok){el.innerHTML=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">Week of ${wk}</p><div class="num" style="font-size:24px;font-weight:700;margin-top:10px">Not enough data</div><p class="hint">No accepted offers with active time logged this week yet. The estimate and the next week guess fill in on their own once the log has them.</p>`;return}
+  const g=rate*AU.hours+S.caMile*AU.miles,adj=Math.max(0,g-AU.pay),pph=AU.pay/AU.hours,mph=AU.miles/AU.hours;
+  if(CAH===null)CAH=Math.min(CAMAX,Math.max(1,Math.round(AU.hours)));
+  el.innerHTML=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">Week of ${wk}. Estimated from ${AU.n} accepted offer${AU.n===1?"":"s"} in your log. No typing needed. Offer payouts can include tips, which makes the estimate a little high or low.</p>
+  <div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(adj)}</div><span>Estimated adjustment</span></div><div class="stat"><div class="num">${$f(g)}</div><span>Guaranteed earnings</span></div><div class="stat"><div class="num">${hm(AU.hours)}</div><span>Active time</span></div><div class="stat"><div class="num">${AU.miles.toFixed(0)}</div><span>Miles</span></div></div>
+  <p class="hint" style="font-family:ui-monospace,Menlo,monospace">(${$f(rate)} × ${AU.hours.toFixed(1)} h) + (${$f(S.caMile)} × ${AU.miles.toFixed(0)} mi) = ${$f(g)}<br>${$f(g)} − ${$f(AU.pay)} pay = ${$f(adj)}</p>
+  <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+  <h2 style="font-size:17px">Next week guess</h2><p class="hint">Uses this week's pace: ${$f(pph)} pay per active hour and ${mph.toFixed(1)} miles per active hour. Move the slider to try different hours. The top is ${CAMAX} (12 hours a day), the most you can dash before a required 6 hour break.</p>
+  <div style="display:flex;align-items:center;gap:12px;margin:12px 0"><input type="range" id="caH" min="0" max="${CAMAX}" step="1" value="${CAH}" style="flex:1;padding:0"><b id="caHo" style="min-width:64px;text-align:right">${CAH} h</b></div>
+  <div class="grid"><div class="stat"><div class="num money" id="caNadj"></div><span>Estimated adjustment</span></div><div class="stat"><div class="num" id="caNpay"></div><span>Projected DoorDash pay</span></div><div class="stat"><div class="num" id="caNg"></div><span>Guaranteed earnings</span></div><div class="stat"><div class="num" id="caNtot"></div><span>Week total (no tips)</span></div></div>
+  <p class="hint" id="caNeq" style="font-family:ui-monospace,Menlo,monospace"></p>`;
+  const upd=()=>{const h=CAH,pay=pph*h,mi=mph*h,gg=rate*h+S.caMile*mi,aj=Math.max(0,gg-pay);
+    $("#caHo").textContent=h+" h";$("#caNadj").textContent=$f(aj);$("#caNpay").textContent=$f(pay);$("#caNg").textContent=$f(gg);$("#caNtot").textContent=$f(pay+aj);
+    $("#caNeq").innerHTML=`(${$f(rate)} × ${h} h) + (${$f(S.caMile)} × ${mi.toFixed(0)} mi) = ${$f(gg)}<br>${$f(gg)} − ${$f(pay)} pay = ${$f(aj)}`};
+  $("#caH").oninput=e=>{CAH=+e.target.value;upd()};upd()}
 $("#seg").onclick=e=>{const b=e.target.closest("button");if(!b)return;PER=b.dataset.p;document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));renderGame(LG[0],LG[1])};
 $("#runSc").onclick=()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(CFG.shortcutName)};
+$("#tstLink").onclick=()=>{const d=new Date(),z=n=>String(n).padStart(2,"0");showTest("| "+d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+" "+z(d.getHours())+":"+z(d.getMinutes())+" | 12.50 | 4.2 | 3 | 2.98 | 9.10 | 21.40 | TAKE IT | 89 | Accept | 25 |")};
+$("#tstCloud").onclick=async()=>{const m=$("#tstMsg");
+ if(!sb){m.textContent="Cloud sync is not available here (offline, or the sync library is blocked). This browser only.";return}
+ if(!sbUser){m.textContent="Not signed in. Sign in under Handoff > Cloud sync.";return}
+ m.textContent="Testing...";const t0=Date.now();
+ try{const r=await tmo(sb.from("hh_store").select("k").limit(1),8000),w=dirtyList().length;
+  m.textContent=r.error?"Reached the server but it said no: "+r.error.message:"Connected as "+(sbUser.email||"your account")+" in "+(Date.now()-t0)+" ms."+(w?" "+w+" item"+(w>1?"s":"")+" waiting to upload.":" Nothing waiting to upload.")}
+ catch(e){m.textContent="No answer within 8 seconds. Check your connection and try again."}};
 $("#getSc").onclick=()=>{CFG.shortcutLink?location.href=CFG.shortcutLink:toast("Add your iCloud link to CFG in index.html")};
 const HDRP="| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |\n|---|---|---|---|---|---|---|---|---|---|---|";
 function showTest(l){const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||"").split(/\r?\n/).some(x=>x.trim()===l.trim());
  const b=document.createElement("div");b.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px";
- b.innerHTML=`<div class="card" style="max-width:360px;width:100%"><h2 style="font-size:17px">TEST received</h2>${r&&r.date?`<p>${esc(r.date)} · $${esc(r.payout)} · ${esc(r.miles)} mi · ${esc(r.items)} items · ${esc(r.verdict)} · ${esc(r.choice)}</p>`:`<p>Link arrived, but the row could not be read.</p>`}<p class="hint">${dup?"This row is already in your log. ":"This row would be added. "}Nothing was saved or counted. Stored in: ${store?"your account":"this browser"}.</p><button class="btn" id="tOk">OK</button></div>`;
+ b.innerHTML=`<div class="card" style="max-width:360px;width:100%"><h2 style="font-size:17px">TEST received</h2>${r&&r.date?`<p>${esc(r.date)} · ${esc(r.payout)} · ${esc(r.miles)} mi · ${esc(r.items)} items · ${esc(r.verdict)} · ${esc(r.choice)}</p>`:`<p>Link arrived, but the row could not be read.</p>`}<p class="hint">${dup?"This row is already in your log. ":"This row would be added. "}Nothing was saved or counted. Stored in: ${(store||sbUser)?"your account":"this browser"}.</p><button class="btn" id="tOk">OK</button></div>`;
  document.body.appendChild(b);b.querySelector("#tOk").onclick=()=>b.remove()}
 async function addRow(l){const v=($("#csv").value||"").trim();if(v.split(/\r?\n/).some(x=>x.trim()===l.trim())){toast("Already logged");return}
  $("#csv").value=(v||HDRP)+"\n"+l.trim();isDemo=false;analyze(parse($("#csv").value));await put("log",{csv:$("#csv").value,v:1});toast("Offer logged")}
@@ -486,9 +577,9 @@ document.addEventListener("change",e=>{const i=e.target.closest("[data-pin]");if
 applyPins();
 (async()=>{
   drawFields();renderGame([],[]);
-  await initStore();
+  await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=store?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}const tm=location.hash.match(/^#test=(.+)$/);if(tm){showTest(decodeURIComponent(tm[1]));history.replaceState(null,"",location.pathname)}}
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){$("#csv").value=l.csv;analyze(parse(l.csv));$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;{renderCA();const hm=location.hash.match(/^#add=(.+)$/);if(hm){await addRow(decodeURIComponent(hm[1]));history.replaceState(null,"",location.pathname)}const tm=location.hash.match(/^#test=(.+)$/);if(tm){showTest(decodeURIComponent(tm[1]));history.replaceState(null,"",location.pathname)}}
 })();
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
