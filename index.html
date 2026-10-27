@@ -116,6 +116,7 @@ nav button[hidden]{display:none}
 
 <section id="dash">
   <div class="card" id="start"></div>
+  <div class="card" id="masterTile"></div>
   <div class="card" id="float"></div>
   <div class="card" id="quest"></div>
   <div class="card"><div class="seg" id="seg"><button data-p="day" class="on">Day</button><button data-p="week">Week</button><button data-p="month">Month</button><button data-p="year">Year</button></div><div id="earnBig"></div><div class="wrap" id="earnTbl" style="margin-top:12px"></div></div>
@@ -153,6 +154,22 @@ nav button[hidden]{display:none}
     <div id="check" style="margin-top:12px"></div>
     <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
   </div>
+</section>
+<section id="data" hidden>
+  <div class="card"><h2 style="font-size:17px">Add your files</h2><p class="hint">Every file goes into the one master log. Nothing is saved anywhere else.</p></div>
+  <div class="card"><h2 style="font-size:17px">Offers log</h2>
+    <label id="drop" style="display:block;margin-top:12px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop offers.txt or data_archive.zip here, or tap to choose<input type="file" id="file" accept=".csv,.txt,.json,.zip" hidden><small style="display:block;color:var(--mut);margin-top:4px">New rows are added to your saved log. A missing header row is added for you.</small></label>
+  </div>
+  <div class="card"><h2 style="font-size:17px">Monthly statements</h2>
+    <label id="drop3" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop your DoorDash statement PDFs here, or tap to choose<input type="file" id="stmFile" accept=".pdf" multiple hidden><small style="display:block;color:var(--mut);margin-top:4px">Reads each month's total and payout count in your browser. Each month also sets your real pay.</small></label>
+    <textarea id="stmTxt" placeholder="Or paste a statement's text here" style="min-height:70px;margin-top:10px"></textarea>
+    <div class="row"><button class="btn ghost" id="stmPaste">Read pasted text</button></div></div>
+  <div class="card"><h2 style="font-size:17px">DoorDash archive</h2>
+    <label id="drop2" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop data_archive.zip here or tap to choose<input type="file" id="file3" accept=".zip,.csv" hidden><small style="display:block;color:var(--mut);margin-top:4px">Only the delivery file is read, inside your browser. Your personal info file is ignored and never saved. Pay and miles are estimated from your settings. Drop your statement PDFs in Earn to correct them.</small></label></div>
+  <div class="card"><h2 style="font-size:17px">Master file</h2><p class="hint" id="dataMaster"></p><div class="row"><button class="btn" data-open="log">Open and edit master file</button></div></div>
+  <div class="card" id="wipeCard"><h2 style="font-size:17px">Delete data</h2><p class="hint">Removes it from this browser and from your account if you are signed in. This cannot be undone. Export a handoff file first if you want a copy.</p>
+    <div class="row"><button class="btn ghost" data-wipe="log">Clear master log</button><button class="btn ghost" data-wipe="archive">Remove archive</button><button class="btn ghost" data-wipe="statements">Remove statements</button><button class="btn ghost" data-wipe="ca">Clear CA entries</button><button class="btn ghost" data-wipe="files">Delete saved original files</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn" style="background:var(--bad,#d33);color:#fff" data-wipe="all">Wipe everything</button></div></div>
 </section>
 <section id="whatif" hidden>
   <div class="card">
@@ -328,11 +345,16 @@ const took=v=>/accept/i.test(v||"")&&!/declin/i.test(v||"");
 let rows=[];
 
 let LOGACC=null;
+function renderMaster(){const n=rows.length,l=rows.length?rows[rows.length-1]:null,t="Master file";
+  const txt=n?n+" row"+(n===1?"":"s")+". Newest: "+esc((l.date||"")+" "+(l.time||""))+".":"Empty. Add rows or files to start it.";
+  const a=$("#masterTile"),b=$("#dataMaster");
+  if(a)a.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="flex:1"><h2 style="font-size:17px">'+t+'</h2><p class="hint" style="margin:4px 0 0">'+txt+'</p></div><button class="btn" data-open="log">Edit</button></div>';
+  if(b)b.textContent=txt}
 function analyze(data){
   showCheck(data);data=adjust(data);
   // master log order is arrival order; every tile reads it oldest to newest so streaks and "latest" are right
   data=data.map((r,i)=>[r,i]).sort((a,b)=>((a[0].date||"")+" "+(a[0].time||"")).localeCompare((b[0].date||"")+" "+(b[0].time||""))||a[1]-b[1]).map(x=>x[0]);
-  rows=data;
+  rows=data;try{renderMaster()}catch(e){}
   // current acceptance rate = the newest shortcut row's Acceptance rate column in the master log
   LOGACC=null;for(let i=data.length-1;i>=0;i--){const r=data[i];if(r.src!=="archive"&&r.rate!==undefined&&r.rate!==""&&num(r.rate)>0){LOGACC=num(r.rate);break}}
   renderEarn();refreshFirst();const n=data.length;
@@ -343,6 +365,7 @@ function analyze(data){
   const acc=R.filter(r=>r.t),hrs=acc.reduce((a,r)=>a+r.min,0)/60;
   const pay=acc.reduce((a,r)=>a+r.p,0),mi=acc.reduce((a,r)=>a+r.m,0),net=acc.reduce((a,r)=>a+r.net,0);
   const RL=R.filter(r=>r.src!=="archive"),nl=RL.length,accL=RL.filter(r=>r.t).length,followed=RL.filter(r=>r.v===r.t).length,fp=nl?Math.round(100*followed/nl):0;
+  LOGRATE=nl?Math.round(100*accL/nl):null;showLR();
   $("#follow").textContent=fp+"%";$("#arc").style.strokeDashoffset=352*(1-fp/100);
   $("#followTxt").textContent=nl?followed+" of "+nl+" logged offers matched the verdict. "+(fp>=85?"Locked in.":"Room to tighten up."):"Archive rows have no verdicts. Log offers with the shortcut to see this.";$("#estNote").textContent=n>nl?(n-nl)+" deliveries come from your DoorDash archive, with estimated pay and miles.":"";
   const st=[["Acceptance",nl?Math.round(100*accL/nl)+"%":"--"],["Gross",$f(pay,0),1],["Net after car",$f(net,0),1],["Net $/hr",hrs?$f(net/hrs):"--",1],["Net $/mile",mi?$f(net/mi):"--",1],["Offers",n],["Miles driven",mi.toFixed(0)],["Hours",hrs.toFixed(1)]];
@@ -586,7 +609,23 @@ function masterLog(text){const seen=new Set(),out=[];
  return HDRM+(out.length?"\n"+out.join("\n"):"")}
 const logRows=t=>Math.max(0,t.split("\n").length-2);
 async function commitLog(out){$("#csv").value=out;isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
-async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
+async async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
+
+// delete data: per type or everything, from browser and account
+async function wipeFiles(){if(!sb||!sbUser)return 0;let n=0;try{const l=await tmo(sb.storage.from("uploads").list(sbUser.id,{limit:1000}),15000);const ps=(l.data||[]).map(f=>sbUser.id+"/"+f.name);if(ps.length){const r=await tmo(sb.storage.from("uploads").remove(ps),30000);if(!r.error)n=ps.length}}catch(e){}return n}
+const WIPE={log:"your master log",archive:"the DoorDash archive and the deliveries it added",statements:"all monthly statements",ca:"your California guarantee entries",files:"the original files saved to your account",all:"EVERYTHING: master log, archive, statements, CA entries, settings and saved files"};
+document.addEventListener("click",async e=>{const b=e.target.closest("[data-wipe]");if(!b)return;const w=b.dataset.wipe;
+ if(!confirm("Delete "+WIPE[w]+"? This cannot be undone."))return;
+ if(w==="all"&&!confirm("Last check: wipe everything?"))return;
+ const all=w==="all";
+ if(all||w==="archive"){const keep=masterLog($("#csv").value).split("\n").slice(2).filter(l=>!/\|\s*archive\s*\|\s*$/.test(l));ARCH=[];await put("archive",{v:1,r:[]});const h=$("#histOut");if(h)h.innerHTML="";if(!all&&!(w==="log"))await commitLog(masterLog(keep.join("\n")))}
+ if(all||w==="statements"){(Object.keys(STM)).forEach(k=>{if(S.monthly)delete S.monthly[k]});STM={};await put("statements",{v:1,s:{}});await put("settings",S);fillZg();renderEarn()}
+ if(all||w==="ca"){CA={};await put("ca",{v:1,w:{}});renderCA()}
+ if(all||w==="log"){$("#csv").value="";await put("log",{csv:"",v:1});analyze([])}
+ if(all){S={...DEF};await put("settings",S);drawFields();setAcc();try{["hh_dirty"].forEach(k=>localStorage.removeItem(k))}catch(x){}}
+ if(all||w==="files"){const n=await wipeFiles();if(w==="files"){toast(n?n+" file"+(n>1?"s":"")+" deleted":"No saved files found");return}}
+ analyze(parse($("#csv").value));refreshFirst();try{renderMaster()}catch(x){}
+ toast(all?"Everything wiped":"Deleted")});
 // Offers the shortcut POSTs to the Supabase "offers" function land in public.offers; pull the ones this log lacks.
 const nrm=x=>x.replace(/\s+/g," ").trim();
 async function pullOffers(manual){
@@ -604,8 +643,9 @@ async function pullOffers(manual){
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&appReady)pullOffers()});
 $("#pullOffers").onclick=()=>pullOffers(true);
 $("#pasteRows").onclick=async()=>{try{await ingest(await navigator.clipboard.readText())}catch(e){toast("Paste blocked")}};
-const PGS=[["log","Log","Paste or load your offers log"],["earn","Earnings","Read your monthly statements"],["hist","History","Load your DoorDash data archive"],["sync","Handoff","Export or import for another AI"]];
+const PGS=[["log","Master file","View, edit and save the master log"],["data","Data","Drop offers, statements and archive files"],["earn","Earnings","Read your monthly statements"],["hist","History","Load your DoorDash data archive"],["sync","Handoff","Export or import for another AI"]];
 let PIN={};try{PIN=JSON.parse(localStorage.getItem("hh_pins")||"{}")}catch(e){}
+if(PIN.data===undefined)PIN.data=true;
 function applyPins(){PGS.forEach(p=>{const b=document.querySelector('nav button[data-t="'+p[0]+'"]');if(b)b.hidden=!PIN[p[0]]})}
 $("#pgList").innerHTML=PGS.map(p=>`<div class="pg"><button class="pgb" data-open="${p[0]}">${p[1]}<small>${p[2]}</small></button><label class="sw"><input type="checkbox" data-pin="${p[0]}" aria-label="Show ${p[1]} in menu"${PIN[p[0]]?" checked":""}><span></span></label></div>`).join("");
 document.addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){const b=document.querySelector('nav button[data-t="'+o.dataset.open+'"]');if(b)b.click()}});
@@ -630,7 +670,7 @@ window.addEventListener("hashchange",()=>{
   if(appReady)processIncomingHash();
 });
 (async()=>{
-  drawFields();renderGame([],[]);
+  drawFields();renderGame([],[]);renderMaster();
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
   const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
