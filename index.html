@@ -586,7 +586,7 @@ async function processIncomingHash(){
   history.replaceState(null,"",location.pathname+location.search);
   try{
     const row=decodeURIComponent((hm||tm)[1]);
-    if(tm||TESTMODE){showTest(row);return}
+    if(tm){showTest(row);return}
     await addRow(row);
   }catch(e){toast("Could not read incoming offer link")}
 }
