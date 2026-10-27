@@ -107,6 +107,7 @@ nav button[hidden]{display:none}
   <button role="tab" aria-selected="false" data-t="calc">Check</button>
   
   <button role="tab" aria-selected="false" data-t="whatif">What-if</button>
+  <button role="tab" aria-selected="false" data-t="data">Data</button>
   <button role="tab" aria-selected="false" data-t="log">Log</button>
   <button role="tab" aria-selected="false" data-t="earn">Earn</button>
   <button role="tab" aria-selected="false" data-t="hist">History</button>
@@ -225,7 +226,7 @@ function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");setT
 // tabs
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["dash","calc","whatif","log","earn","hist","sync","settings"].forEach(id=>$("#"+id).hidden=id!==b.dataset.t);if(b.dataset.t==="whatif")drawWf()});
+  ["dash","calc","whatif","data","log","earn","hist","sync","settings"].forEach(id=>{const page=$("#"+id);if(page)page.hidden=id!==b.dataset.t});if(b.dataset.t==="whatif")drawWf()});
 
 // storage: signed-in cloud account (Supabase) when available, always mirrored to this browser
 let sb=null,sbUser=null;
