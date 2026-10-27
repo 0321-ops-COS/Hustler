@@ -146,8 +146,8 @@ nav button[hidden]{display:none}
   <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card">
     <h2 style="font-size:17px">Paste your offers log</h2>
-    <p class="hint">First row is the header: date,time,zone,payout,miles,items,minutes,verdict,choice</p>
-    <textarea id="csv" placeholder="2026-10-24,12:40,Vista,10.70,5.5,1,22,Accept,Accepted"></textarea>
+    <p class="hint">This is your master log, one table the whole app reads. Each row looks like what the shortcut writes: | Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |. Anything you paste or load is converted to it.</p>
+    <textarea id="csv" placeholder="| 2026-10-27 14:46| 26.50 | 9.1 | 6 |2.91 | 22.42| 30.06 | TAKE IT | 80.00 | Accept | 15.25 |"></textarea>
     <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button><button class="btn ghost" id="clear">Clear</button></div>
     <label id="drop" style="display:block;margin-top:12px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop offers.txt or data_archive.zip here, or tap to choose<input type="file" id="file" accept=".csv,.txt,.json,.zip" hidden><small style="display:block;color:var(--mut);margin-top:4px">New rows are added to your saved log. A missing header row is added for you.</small></label>
     <div id="check" style="margin-top:12px"></div>
@@ -319,7 +319,7 @@ function parse(text){
   const L=text.trim().split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
   if(L.length&&L[0].startsWith("|"))return L.filter(l=>l.startsWith("|")).map(l=>l.split("|").slice(1,-1).map(x=>x.trim())).filter(c=>c[0]&&!/^[-: ]+$/.test(c[0])&&c[0].toLowerCase()!=="date"&&c[0]!=="#").map(c=>{if(/^\d+$/.test(c[0])&&/^\d{4}-\d\d-\d\d/.test(c[1]||""))c=c.slice(1);
     const dt=c[0].split(/\s+/),m=num(c[2]),it=num(c[3]),net=num(c[5]),hr=num(c[6]);
-    return{date:dt[0],time:dt[1]||"",zone:"",payout:c[1],miles:c[2],items:c[3],permile:c[4],net:c[5],hourly:c[6],verdict:c[7],rate:c[8],choice:c[9]||"",slack:c[10]||"",minutes:String(hr>0&&net>0?+(net/hr*60).toFixed(1):+(10+m*2.5+it*2).toFixed(1))}});
+    return{date:dt[0],time:dt[1]||"",zone:c[11]||"",payout:c[1],miles:c[2],items:c[3],permile:c[4],net:c[5],hourly:c[6],verdict:c[7],rate:c[8],choice:c[9]||"",slack:c[10]||"",src:c[13]||"",minutes:c[12]&&num(c[12])>0?c[12]:String(hr>0&&net>0?+(net/hr*60).toFixed(1):+(10+m*2.5+it*2).toFixed(1))}});
   if(L.length<2)return[];
   const H=L[0].split(",").map(h=>h.trim().toLowerCase());
   return L.slice(1).map(l=>{const c=l.split(","),o={};H.forEach((h,i)=>o[h]=(c[i]||"").trim());return o})}
@@ -327,8 +327,15 @@ const yes=v=>/accept|take|yes|worth|good|go/i.test(v||"")&&!/decline|pass|no\b/i
 const took=v=>/accept/i.test(v||"")&&!/declin/i.test(v||"");
 let rows=[];
 
+let LOGACC=null;
 function analyze(data){
-  showCheck(data);data=adjust(data);rows=data;renderEarn();refreshFirst();const n=data.length;
+  showCheck(data);data=adjust(data);
+  // master log order is arrival order; every tile reads it oldest to newest so streaks and "latest" are right
+  data=data.map((r,i)=>[r,i]).sort((a,b)=>((a[0].date||"")+" "+(a[0].time||"")).localeCompare((b[0].date||"")+" "+(b[0].time||""))||a[1]-b[1]).map(x=>x[0]);
+  rows=data;
+  // current acceptance rate = the newest shortcut row's Acceptance rate column in the master log
+  LOGACC=null;for(let i=data.length-1;i>=0;i--){const r=data[i];if(r.src!=="archive"&&r.rate!==undefined&&r.rate!==""&&num(r.rate)>0){LOGACC=num(r.rate);break}}
+  renderEarn();refreshFirst();const n=data.length;
   if(!n){renderGame([],[]);$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;return}
   const gasOf=r=>(S.zoneGas&&S.zoneGas[r.zone])||S.gas;
   const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),net=("net" in r&&r.net!=="")?num(r.net):p-m*(gasOf(r)/S.mpg+S.wear);
@@ -390,9 +397,9 @@ $("#exp").onclick=()=>save("hustle-handoff.json",JSON.stringify({app:"Hustle HQ"
 $("#cpBrief").onclick=async()=>{try{await navigator.clipboard.writeText(brief()+"\n\nLOG:\n"+$("#csv").value);toast("AI brief copied")}catch(e){toast("Copy blocked")}};
 async function ingest(t){let j=null;try{j=JSON.parse(t)}catch(e){}
  if(j&&(j.settings||j.csv!==undefined)){if(j.settings){S={...DEF,monthly:j.settings.monthly||{},zoneGas:j.settings.zoneGas||{}};drawFields();await put("settings",S)}
-  if(j.csv!==undefined){$("#csv").value=j.csv;await put("log",{csv:j.csv,v:1});analyze(parse(j.csv))}toast("Handoff imported");return}
- const before=masterLog($("#csv").value),n0=before.split("\n").length,out=masterLog(before+"\n"+t),n1=out.split("\n").length;
- if(n1<2){toast("Could not read that file");return}
+  if(j.csv!==undefined){await commitLog(masterLog(j.csv))}toast("Handoff imported");return}
+ const before=masterLog($("#csv").value),n0=logRows(before),out=masterLog(before+"\n"+t),n1=logRows(out);
+ if(!n1){toast("Could not read that file");return}
  await commitLog(out);toast((n1-n0)+" new rows added")}
 let STM={};
 const MN=["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -417,7 +424,6 @@ function renderEarn(){const el=$("#earnOut");if(!el)return;const ks=Object.keys(
 $("#stmFile").onchange=async e=>{await takeStm([...e.target.files]);e.target.value=""};
 $("#stmPaste").onclick=()=>takeStm([$("#stmTxt").value],true);
 const dz3=$("#drop3");["dragover","dragenter"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor="var(--go)"}));["dragleave","drop"].forEach(ev=>dz3.addEventListener(ev,e=>{e.preventDefault();dz3.style.borderColor=""}));dz3.addEventListener("drop",e=>takeStm([...e.dataTransfer.files].filter(f=>/pdf$/i.test(f.name))));
-const HDR2="date,time,zone,payout,miles,items,minutes,verdict,choice,src,permile,net,hourly,rate,slack";
 const CITIES=["Murrieta","Temecula","Lake Elsinore","Menifee","Corona","Wildomar","Perris","Winchester","Sun City","Canyon Lake","Fontana","Riverside","Hemet","Norco","Eastvale","Moreno Valley"];
 function adjust(d){const M=S.monthly||{},sm={},ix={},pc={};
  d.forEach((r,i)=>{if(r.src==="archive"){const k=(r.date||"").slice(0,7);sm[k]=(sm[k]||0)+num(r.minutes);(ix[k]=ix[k]||[]).push(i)}});
@@ -428,9 +434,8 @@ async function toLog(){const O=ARCH.map(r=>{const b=+new Date(r[2]+":00Z"),p=+ne
  let i=0;while(i<O.length){let j=i,end=O[i].b;while(j+1<O.length&&O[j+1].a<end){j++;end=Math.max(end,O[j].b)}const share=(end-O[i].a)/(j-i+1)/60000;for(let k=i;k<=j;k++)O[k].m=share;i=j+1}
  const F=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Los_Angeles",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"});
  const lines=O.map(o=>{const q={};F.formatToParts(new Date(o.p)).forEach(x=>q[x.type]=x.value);const z=CITIES.find(c=>o.s.toLowerCase().includes(c.toLowerCase()))||"";return[q.year+"-"+q.month+"-"+q.day,q.hour+":"+q.minute,z,num(S.estPay).toFixed(2),(o.m/60*num(S.estMph)).toFixed(1),o.i||1,Math.round(o.m),"","Accepted","archive"].join(",")});
- const old=($("#csv").value||"").trim().split(/\r?\n/).filter(Boolean).slice(1).filter(l=>!/,archive$/.test(l)),have=new Set(old);
- const out=[HDR2,...old,...lines.filter(l=>!have.has(l))].join("\n");
- $("#csv").value=out;isDemo=false;analyze(parse(out));await put("log",{csv:out,v:1})}
+ const keep=masterLog($("#csv").value).split("\n").slice(2).filter(l=>!/\|\s*archive\s*\|\s*$/.test(l));
+ await commitLog(masterLog(keep.join("\n")+"\n"+lines.join("\n")))}
 let ARCH=[];
 async function route(f){keepFile(f);const n=f.name.toLowerCase();if(n.endsWith(".zip"))return importZip(f);const t=await f.text();if(/ORDER_CREATED_TIME/i.test(t.slice(0,300)))return loadDeliv(t);return ingest(t)}
 function csvRows(t){const o=[];let r=[],c="",q=0;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=0}else c+=ch}else if(ch=='"')q=1;else if(ch==','){r.push(c);c=""}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);c="";if(r.length>1||r[0])o.push(r);r=[]}else c+=ch}if(c||r.length){r.push(c);o.push(r)}return o}
@@ -473,9 +478,9 @@ function renderStart(){const el=$("#start");if(!el)return;
  +step(hasR,"Your acceptance rate",hasR?"Saved at "+num(S.accept)+"%.":"In DoorDash, open Ratings > Acceptance rate and copy the Accepted and Declined counts from Last 100 offers.","")
  +(hasR?"":'<div class="fields"><label>Accepted<input inputmode="numeric" id="st_a"></label><label>Declined<input inputmode="numeric" id="st_d"></label></div><div class="row"><button class="btn" id="st_go">Save rate</button></div>')+real}
 function renderFloat(){const el=$("#float");if(!el)return;
- const T=num(S.target)||85,d=Math.max(0,Math.round(100-num(S.accept))),left=(100-T)-d,none=left<=0;
+ const AR=LOGACC!=null?LOGACC:num(S.accept),T=num(S.target)||85,d=Math.max(0,Math.round(100-AR)),left=(100-T)-d,none=left<=0;
  const msg=none?(left<0?'NO FLOAT. You are '+(-left)+' decline'+(left===-1?'':'s')+' past your '+T+'% target. Accept offers until old declines roll off the last 100.':`NO FLOAT. Your next decline drops you under ${T}%. Take what comes.`):left<=3?'LOW. '+left+' decline'+(left===1?'':'s')+' left before you drop under '+T+'%.':'OK. You can pass on '+left+' more before you drop under '+T+'%.';
- el.innerHTML='<h2 style="font-size:17px">Decline float</h2><div class="grid"><div class="stat"><div class="num '+(none?'bad':left<=3?'':'good')+'">'+left+'</div><span>Declines left</span></div><div class="stat"><div class="num">'+d+'</div><span>Declined, last 100</span></div><div class="stat"><div class="num">'+T+'%</div><span>Target</span></div></div><p class="hint" style="font-size:14px;color:var(--tx)">'+msg+'</p><p class="hint">Based on '+num(S.accept)+'% acceptance. Float goes up by 1 each time an old decline rolls off, and down by 1 each time you decline. Change the target in Settings.</p>'}
+ el.innerHTML='<h2 style="font-size:17px">Decline float</h2><div class="grid"><div class="stat"><div class="num '+(none?'bad':left<=3?'':'good')+'">'+left+'</div><span>Declines left</span></div><div class="stat"><div class="num">'+d+'</div><span>Declined, last 100</span></div><div class="stat"><div class="num">'+T+'%</div><span>Target</span></div></div><p class="hint" style="font-size:14px;color:var(--tx)">'+msg+'</p><p class="hint">Based on '+AR+'% acceptance'+(LOGACC!=null?' (newest row in your master log)':' (Settings)')+'. Float goes up by 1 each time an old decline rolls off, and down by 1 each time you decline. Change the target in Settings.</p>'}
 function refreshFirst(){try{renderStart();renderFloat()}catch(e){}}
 document.addEventListener("click",async e=>{if(e.target.id!=="st_go")return;const a=num($("#st_a").value),d=num($("#st_d").value);if(a+d<=0){toast("Enter your Accepted and Declined counts");return}
  S.accept=Math.round(100*a/(a+d));S.accSet=1;setAcc();await put("settings",S);refreshFirst();toast("Acceptance rate set to "+S.accept+"%")});
@@ -494,8 +499,8 @@ $("#c_go").onclick=()=>{const g=num($("#c_g").value);if(g>0&&g!==S.gas){S.gas=g;
  $("#c_out").innerHTML=`<div class="card" style="text-align:center"><div class="num ${v.ok?"good":"bad"}" style="font-size:56px">${v.ok?"TAKE IT":"SKIP"}</div><div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(v.net)}</div><span>Net after car</span></div><div class="stat"><div class="num money">${$f(v.hr)}</div><span>Net $/hr (need ${$f(v.reqH)})</span></div><div class="stat"><div class="num money">${$f(v.pm)}</div><span>Payout $/mile (need ${$f(v.reqM)})</span></div><div class="stat"><div class="num">${Math.round(v.mn)}</div><span>Minutes</span></div></div></div>`};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-$("#load").onclick=async()=>{const mm=masterLog($("#csv").value);if(mm.split("\n").length>1)$("#csv").value=mm;const d=parse($("#csv").value);if(!d.length){toast("Need a header row plus offers");return}
-  isDemo=false;analyze(d);const w=await put("log",{csv:$("#csv").value,v:1});
+$("#load").onclick=async()=>{const mm=masterLog($("#csv").value);if(!logRows(mm)){toast("Need offers to save");return}
+  const w=await commitLog(mm);
   $("#saveInfo").textContent=w==="account"?"Saved to your account.":w?"Saved in this browser only.":"Could not save.";
   document.querySelector('[data-t="dash"]').click()};
 $("#clear").onclick=async()=>{$("#csv").value="";analyze([]);await put("log",{csv:"",v:1});toast("Cleared")};
@@ -566,18 +571,20 @@ function showTest(l){const r=parse(HDRP+"\n"+l.trim())[0],dup=($("#csv").value||
  const b=document.createElement("div");b.style.cssText="position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px";
  b.innerHTML=`<div class="card" style="max-width:360px;width:100%"><h2 style="font-size:17px">TEST received</h2>${r&&r.date?`<p>${esc(r.date)} · ${esc(r.payout)} · ${esc(r.miles)} mi · ${esc(r.items)} items · ${esc(r.verdict)} · ${esc(r.choice)}</p>`:`<p>Link arrived, but the row could not be read.</p>`}<p class="hint">${dup?"This row is already in your log. ":"This row would be added. "}Nothing was saved or counted. Stored in: ${(store||sbUser)?"your account":"this browser"}.</p><button class="btn" id="tOk">OK</button></div>`;
  document.body.appendChild(b);b.querySelector("#tOk").onclick=()=>b.remove()}
-// ONE master log: every path (shortcut offers, pasted rows, files, archive) is converted to this CSV and saved once; every page reads it through analyze().
-function pipeToCsv(l){const c=l.split("|").slice(1,-1).map(x=>x.trim());
- if(c.length<10||!/^\d{4}-\d\d-\d\d/.test(c[0])||isNaN(parseFloat(c[1].replace(/[$,]/g,""))))return null;
- const dt=c[0].split(/\s+/),m=num(c[2]),it=num(c[3]),net=num(c[5]),hr=num(c[6]);
- const min=hr>0&&net>0?+(net/hr*60).toFixed(1):+(10+m*2.5+it*2).toFixed(1);
- return[dt[0],dt[1]||"","",c[1],c[2],c[3],min,c[7],c[9]||"","shortcut",c[4],c[5],c[6],c[8],c[10]||""].map(x=>String(x).replace(/[,\r\n]/g,"")).join(",")}
-function masterLog(text){const seen=new Set(),out=[HDR2];
+// ONE master log, kept as the shortcut's pipe table. Shortcut rows stay exactly as the shortcut writes them (11 columns);
+// archive and older rows use the same table plus Zone, Minutes and Source. Every path converts into this, dedupes and saves once.
+const HDRM="| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|";
+function csvToPipe(l){const c=l.split(",").map(x=>x.trim());if(c.length<9||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(c[0]))return null;
+ const g=i=>c[i]||"",src=g(9),d=(g(0)+" "+g(1)).trim();
+ if(src==="shortcut"&&c.length>=15)return"| "+[d,g(3),g(4),g(5),g(10),g(11),g(12),g(7),g(13),g(8),g(14)].join(" | ")+" |";
+ return"| "+[d,g(3),g(4),g(5),g(10),g(11),g(12),g(7),g(13),g(8),g(14),g(2),g(6),src].join(" | ")+" |"}
+function masterLog(text){const seen=new Set(),out=[];
  for(const raw of String(text||"").split(/\r?\n/)){let l=raw.trim();if(!l)continue;
-  if(l.startsWith("|")){l=pipeToCsv(l);if(!l)continue}
-  else if(/^date\s*,/i.test(l)||!l.includes(","))continue;
-  if(seen.has(l))continue;seen.add(l);out.push(l)}
- return out.join("\n")}
+  if(l.startsWith("|")){const c=l.split("|").slice(1,-1).map(x=>x.trim());if(c.length<10||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(c[0])||isNaN(parseFloat(c[1].replace(/[$,]/g,""))))continue}
+  else{if(/^date\s*,/i.test(l)||!l.includes(","))continue;l=csvToPipe(l);if(!l)continue}
+  const k=l.replace(/\s+/g," ").replace(/\s*\|\s*/g,"|");if(seen.has(k))continue;seen.add(k);out.push(l)}
+ return HDRM+(out.length?"\n"+out.join("\n"):"")}
+const logRows=t=>Math.max(0,t.split("\n").length-2);
 async function commitLog(out){$("#csv").value=out;isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
 async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 // Offers the shortcut POSTs to the Supabase "offers" function land in public.offers; pull the ones this log lacks.
@@ -588,8 +595,8 @@ async function pullOffers(manual){
     const r=await tmo(sb.from("offers").select("row_text").order("ts",{ascending:true}).order("id",{ascending:true}).limit(5000),15000);
     if(r.error){if(manual)toast("Could not read offers: "+r.error.message);return 0}
     const raw=($("#csv").value||"").trim(),cur=masterLog(raw),out=masterLog(cur+"\n"+(r.data||[]).map(o=>o.row_text||"").join("\n"));
-    const added=out.split("\n").length-cur.split("\n").length;
-    if(added<=0&&cur===raw){if(manual)toast("No new offers from the shortcut");return 0}
+    const added=logRows(out)-logRows(cur);
+    if(added<=0&&(cur===raw||!raw)){if(manual)toast("No new offers from the shortcut");return 0}
     await commitLog(out);
     toast(added>0?added+" new offer"+(added===1?"":"s")+" from the shortcut":"Log tidied");return added;
   }catch(e){if(manual)toast("Could not reach your offers");return 0}
@@ -626,7 +633,7 @@ window.addEventListener("hashchange",()=>{
   drawFields();renderGame([],[]);
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=mc.split("\n").length>1?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
   await pullOffers();
