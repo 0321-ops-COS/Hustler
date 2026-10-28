@@ -49,6 +49,17 @@ jobs:
           grep -E "Executed [1-9][0-9]* test" core-tests.log
           echo "A test really ran (not skipped, not zero)."
 
+      - name: Summarise failure
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '### HustlerCore test failure'
+            echo '```'
+            grep -E "error:|XCTAssert|failed|Executed [0-9]+ test" core-tests.log | head -n 80 || tail -n 40 core-tests.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload test log
         if: always()
         uses: actions/upload-artifact@v4
@@ -88,6 +99,17 @@ jobs:
             -derivedDataPath ios-app/.build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
             2>&1 | tee app-build.log
+
+      - name: Summarise failure
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo '### App build failure'
+            echo '```'
+            grep -E "error:|warning: .*not found" app-build.log | head -n 60 || tail -n 40 app-build.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload build log
         if: always()
