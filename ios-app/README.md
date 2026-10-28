@@ -13,8 +13,9 @@ and no signing.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
   is not committed.
 - `HustlerCore` is a dependency-free SwiftPM library: Foundation only, plus
-  PDFKit for page-one statement text where that framework exists. No UI, no file
-  system, no clock, no network.
+  PDFKit for page-one statement text where that framework exists. No UI, no
+  clock, no network. Its one file-system type is `LocalStore`, and every test of
+  it runs against a temporary directory.
 
 ## What is ported
 
@@ -34,6 +35,7 @@ and no signing.
 | Page-one PDF text (PDFKit, no OCR) and the paste path | `StatementPDFText`, `StatementParser` | `pdfText()` |
 | Statement allocation by minutes in whole cents, mileage split | `StatementReconciler` | `adjust()` |
 | Import classification, month summaries, versioned store documents | `StatementImporter`, `StatementMonthSummary`, `StatementStoreDocument`, `MasterLogDocument` | new file-format layer, no web equivalent |
+| On-device files: blocked writes after a failed load, explicit recovery, commit only after a successful write | `LocalStore`, `LocalLibrary`, `StoreArtefact` | new file-format layer, no web equivalent |
 
 Two populations are kept apart on purpose, because the web app measures them
 differently: **money, miles and hours** cover accepted rows only, while
@@ -99,11 +101,32 @@ reachable from the app shell:
 analytics use, so the screen cannot disagree with the numbers. The view model
 only decides what to say and when to write.
 
-`Hustler/Platform/LocalStore.swift` writes `master-log.json` and
-`statements.json` under `Application Support/Hustler/`, atomically and with
-complete file protection. Both documents carry `schemaVersion: 1`; a file with a
-version the app does not know throws instead of being overwritten, and the screen
-says so rather than silently replacing earnings history.
+### Persistence safety
+
+`HustlerCore/LocalStore.swift` owns both files — `master-log.json` and
+`statements.json` under `Application Support/Hustler/` — plus `LocalLibrary`,
+which holds the in-memory state and decides when a change becomes durable. The
+rules live at the file layer so no screen can bypass them:
+
+- **Missing file** → a new empty document. A first run is not an error.
+- **A file that exists but will not decode** — corrupt, unreadable, or a newer
+  `schemaVersion` — marks that artefact *unavailable*, and every later save to it
+  throws. It is never treated as an empty document and never overwritten.
+- **Recovery is explicit.** The only way out is "keep a copy and start fresh",
+  which moves the unreadable file to `master-log.json.unreadable` (suffixed
+  further if that name is taken), clears the block and starts that artefact
+  empty. Nothing is deleted.
+- **The two artefacts are independent.** A bad statements file blocks imports and
+  nothing else; a bad log blocks log saves and nothing else.
+- **A save is committed to memory only after the write succeeded**, so a failed
+  write leaves the previous document in memory and the previous bytes on disk.
+- Writes stay atomic and carry complete file protection on Apple platforms.
+
+`LocalStoreTests` exercises this against a real temporary directory: save and
+reload both artefacts, reject corrupt and newer-format JSON while preserving the
+original bytes, prove a failed load blocks the next write, prove a failed save
+changes neither memory nor the file, and prove one artefact's failure leaves the
+other working. None of it involves a simulator.
 
 ## What is deliberately NOT ported yet
 
@@ -202,7 +225,7 @@ CI (`.github/workflows/ios.yml`):
 | Claim | Status |
 |---|---|
 | Source exists | Yes |
-| Core tests compile and pass | Proven locally via `tools/local-test.sh` (84 tests) and in CI |
+| Core tests compile and pass | Proven locally via `tools/local-test.sh` (102 tests) and in CI |
 | App compiles for iOS | Proven only by CI — the unsigned simulator build |
 | Statement import reachable in the app | Wired to the pipeline and compiled by CI; never launched by hand on a simulator or device |
 | Installed on a physical iPhone | **No** — needs an Apple signing identity |

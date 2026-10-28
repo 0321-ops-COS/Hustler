@@ -4,6 +4,10 @@ import HustlerCore
 
 /// The first screen that reaches the statement pipeline: a PDF or pasted text in,
 /// a stored monthly total out, and the month's allocation shown against the log.
+///
+/// When a saved file cannot be read, its section is replaced by the reason and a
+/// single explicit recovery button. The import and save controls are not shown,
+/// so a corrupt or newer-format file cannot be overwritten from this screen.
 struct StatementImportView: View {
 
     @StateObject private var model = StatementImportModel()
@@ -19,6 +23,39 @@ struct StatementImportView: View {
                 }
             }
 
+            statementsSection
+            logSection
+            monthsSection
+        }
+        .navigationTitle("Statements")
+        .navigationBarTitleDisplayMode(.inline)
+        .fileImporter(isPresented: $choosingPDF, allowedContentTypes: [.pdf]) { result in
+            switch result {
+            case let .success(url):
+                model.importPDF(at: url)
+            case let .failure(error):
+                model.reportFailure(error)
+            }
+        }
+    }
+
+    // MARK: - Statements
+
+    @ViewBuilder
+    private var statementsSection: some View {
+        if let problem = model.statementsProblem {
+            Section {
+                Text(problem)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                Button("Keep a copy and start empty") { model.recoverStatements() }
+                Text("The unreadable file is moved aside, never deleted. Importing stays blocked until you do this.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } header: {
+                Text("Saved statements unavailable")
+            }
+        } else {
             Section {
                 Button {
                     choosingPDF = true
@@ -45,8 +82,23 @@ struct StatementImportView: View {
             } footer: {
                 Text("The fallback when a PDF has no readable text. It is parsed by the same rules as the PDF.")
             }
+        }
+    }
 
-            Section {
+    // MARK: - Master log
+
+    @ViewBuilder
+    private var logSection: some View {
+        Section {
+            if let problem = model.logProblem {
+                Text(problem)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                Button("Keep a copy and start a new log") { model.recoverLog() }
+                Text("The saved log is still on the device and has not been changed. Saving stays blocked until you do this.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else {
                 TextEditor(text: $model.logDraft)
                     .frame(minHeight: 110)
                     .font(.system(.footnote, design: .monospaced))
@@ -55,31 +107,26 @@ struct StatementImportView: View {
                 Button("Save master log") { model.saveLog() }
                 LabeledContent("Rows", value: "\(model.logRowCount)")
                 LabeledContent("Archive rows", value: "\(model.logArchiveRowCount)")
-            } header: {
-                Text("Master log")
-            } footer: {
-                Text("Reconciliation spreads each statement month's total over that month's archive rows by minutes, in whole cents, so the parts add up to the statement exactly. The log stays pipe-table text.")
             }
-
-            Section("Statement months") {
-                if model.summaries.isEmpty {
-                    Text("No statement imported yet.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(model.summaries, id: \.month) { summary in
-                        StatementMonthRow(summary: summary)
-                    }
-                }
-            }
+        } header: {
+            Text("Master log")
+        } footer: {
+            Text("Reconciliation spreads each statement month's total over that month's archive rows by minutes, in whole cents, so the parts add up to the statement exactly. The log stays pipe-table text.")
         }
-        .navigationTitle("Statements")
-        .navigationBarTitleDisplayMode(.inline)
-        .fileImporter(isPresented: $choosingPDF, allowedContentTypes: [.pdf]) { result in
-            switch result {
-            case let .success(url):
-                model.importPDF(at: url)
-            case let .failure(error):
-                model.reportFailure(error)
+    }
+
+    // MARK: - Months
+
+    @ViewBuilder
+    private var monthsSection: some View {
+        Section("Statement months") {
+            if model.summaries.isEmpty {
+                Text("No statement imported yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(model.summaries, id: \.month) { summary in
+                    StatementMonthRow(summary: summary)
+                }
             }
         }
     }

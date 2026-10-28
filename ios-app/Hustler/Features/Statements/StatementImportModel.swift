@@ -2,9 +2,15 @@ import Foundation
 import SwiftUI
 import HustlerCore
 
-/// Screen state for statement import. It owns no arithmetic: parsing,
-/// allocation and month summaries all come from `HustlerCore`, and the store
-/// only reads or writes whole documents.
+/// Screen state for statement import. It owns no arithmetic and no durability
+/// rules: parsing, allocation and month summaries come from `HustlerCore`, and
+/// `LocalLibrary` decides what may be read or written. This type only turns
+/// results into sentences.
+///
+/// A file that exists but cannot be read is surfaced as an unavailable artefact,
+/// not as an empty one: the drafts stay blank, the buttons that would write are
+/// disabled, and the only way forward is the explicit "keep a copy and start
+/// fresh" recovery, which never deletes the original file.
 @MainActor
 final class StatementImportModel: ObservableObject {
 
@@ -14,65 +20,57 @@ final class StatementImportModel: ObservableObject {
     }
 
     @Published private(set) var log: MasterLogDocument
-    @Published private(set) var book: StatementBook
+    @Published private(set) var statements: StatementBook
+    @Published private(set) var unavailable: [StoreArtefact: String]
     @Published var logDraft: String
     @Published var pasteDraft: String = ""
     @Published private(set) var notice: Notice?
 
-    private let store: LocalStore
-    private static let logName = "master-log.json"
-    private static let statementsName = "statements.json"
+    private let library: LocalLibrary
 
     init(store: LocalStore = LocalStore()) {
-        self.store = store
+        let library = LocalLibrary(store: store)
+        let problems = Self.problems(in: library)
 
-        var loadedLog = MasterLogDocument(text: "")
-        var loadedBook = StatementBook()
-        var failures: [String] = []
-
-        do {
-            if let stored = try store.load(MasterLogDocument.self, from: Self.logName) {
-                loadedLog = stored
-            }
-        } catch {
-            failures.append(error.localizedDescription)
-        }
-
-        do {
-            if let stored = try store.load(StatementStoreDocument.self, from: Self.statementsName) {
-                loadedBook = stored.book
-            }
-        } catch {
-            failures.append(error.localizedDescription)
-        }
-
-        self.log = loadedLog
-        self.book = loadedBook
-        self.logDraft = loadedLog.rowCount > 0 ? loadedLog.text : ""
-        self.notice = failures.isEmpty ? nil : Notice(text: failures.joined(separator: " "), isFailure: true)
+        self.library = library
+        self.log = library.log
+        self.statements = library.statements
+        self.unavailable = problems
+        self.logDraft = library.log.rowCount > 0 ? library.log.text : ""
+        self.notice = problems.isEmpty
+            ? nil
+            : Notice(
+                text: "Saved data could not be read. Nothing has been replaced or deleted; "
+                    + "read the note below before saving.",
+                isFailure: true
+            )
     }
 
     // MARK: - Derived state
 
     var summaries: [StatementMonthSummary] {
-        StatementImporter.summaries(book: book, rows: parsedRows)
+        library.summaries(rows: parsedRows)
     }
 
     var logRowCount: Int { log.rowCount }
 
     var logArchiveRowCount: Int { log.archiveRowCount }
 
+    var logProblem: String? { unavailable[.masterLog] }
+
+    var statementsProblem: String? { unavailable[.statements] }
+
     private var parsedRows: [LogRow] { MasterLogParser.parse(log.text) }
 
     // MARK: - Master log
 
     /// Saves the draft through `masterLog()`, so the stored text is canonical and
-    /// the counts on screen describe what was actually kept.
+    /// the counts on screen describe what was actually kept. The draft is only
+    /// replaced when the write succeeded.
     func saveLog() {
-        let document = MasterLogDocument(text: logDraft)
         do {
-            try store.save(document, as: Self.logName)
-            log = document
+            let document = try library.saveLog(logDraft)
+            refresh()
             logDraft = document.rowCount > 0 ? document.text : ""
             notice = Notice(
                 text: "Saved \(document.rowCount) rows, \(document.archiveRowCount) of them from the archive.",
@@ -120,16 +118,16 @@ final class StatementImportModel: ObservableObject {
     }
 
     private func importText(_ text: String, source: StatementImportSource) {
+        if let problem = statementsProblem {
+            notice = Notice(text: problem, isFailure: true)
+            return
+        }
+
         switch StatementImporter.outcome(text: text, source: source) {
         case let .parsed(statement):
-            var updated = book
-            guard updated.take([text]) > 0 else {
-                notice = Notice(text: "Nothing was imported.", isFailure: true)
-                return
-            }
             do {
-                try store.save(StatementStoreDocument(book: updated), as: Self.statementsName)
-                book = updated
+                try library.addStatement(statement, text: text)
+                refresh()
                 if source == .paste { pasteDraft = "" }
                 notice = Notice(
                     text: "Imported \(Self.monthLabel(statement.month)): "
@@ -155,6 +153,52 @@ final class StatementImportModel: ObservableObject {
                 isFailure: true
             )
         }
+    }
+
+    // MARK: - Explicit recovery
+
+    func recoverLog() {
+        recover(.masterLog)
+    }
+
+    func recoverStatements() {
+        recover(.statements)
+    }
+
+    private func recover(_ artefact: StoreArtefact) {
+        do {
+            let copy = try library.recover(artefact)
+            refresh()
+            if artefact == .masterLog { logDraft = "" }
+
+            let kept = copy.map { "The unreadable file is kept as \($0.lastPathComponent). " } ?? ""
+            let reset = artefact == .masterLog
+                ? "The master log now starts empty."
+                : "The statements now start empty."
+            notice = Notice(text: kept + reset, isFailure: false)
+        } catch {
+            notice = Notice(text: error.localizedDescription, isFailure: true)
+        }
+    }
+
+    // MARK: - Helpers
+
+    /// Copies durable state into the published properties; it deliberately does
+    /// not touch `logDraft`, so unsaved edits survive an import.
+    private func refresh() {
+        log = library.log
+        statements = library.statements
+        unavailable = Self.problems(in: library)
+    }
+
+    private static func problems(in library: LocalLibrary) -> [StoreArtefact: String] {
+        var problems: [StoreArtefact: String] = [:]
+        for artefact in StoreArtefact.allCases {
+            if case let .unavailable(reason) = library.status(of: artefact) {
+                problems[artefact] = reason
+            }
+        }
+        return problems
     }
 
     /// `2026-10` → `October 2026`, display only; the stored key stays `yyyy-MM`.
