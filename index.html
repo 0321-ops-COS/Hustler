@@ -89,6 +89,15 @@ nav button[hidden]{display:none}
 .sw span:after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:transform .2s}
 .sw input:checked+span{background:var(--go)}
 .sw input:checked+span:after{transform:translateX(20px)}
+#csv,#scopeTxt{height:58vh;min-height:320px;max-height:80vh;overflow:auto;white-space:pre;overflow-wrap:normal;resize:vertical;scrollbar-width:auto;scrollbar-color:var(--gold) var(--g1)}
+#csv::-webkit-scrollbar,#scopeTxt::-webkit-scrollbar{width:12px;height:12px}
+#csv::-webkit-scrollbar-track,#scopeTxt::-webkit-scrollbar-track{background:var(--g1);border-radius:9px}
+#csv::-webkit-scrollbar-thumb,#scopeTxt::-webkit-scrollbar-thumb{background:var(--gold);border-radius:9px;border:2px solid var(--g1)}
+#scopeTxt{width:100%;background:var(--g1);border-color:var(--g2)}
+#scopeTxt[hidden],#csv[hidden]{display:none}
+#scSel{flex:1;min-width:0;margin:0;background:var(--g1);color:var(--tx);border:1px solid var(--g2);border-radius:10px;padding:10px;font:600 14px Sora,sans-serif}
+#scopePick{align-items:center;margin:0 0 10px}
+#scopePick .btn{padding:10px 16px;font-size:18px;line-height:1}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -147,10 +156,14 @@ nav button[hidden]{display:none}
 <section id="log" hidden>
   <button class="btn ghost" data-open="settings" style="margin-bottom:12px">&larr; Settings</button>
   <div class="card">
-    <h2 style="font-size:17px">Paste your offers log</h2>
+    <h2 style="font-size:17px">Master log</h2>
     <p class="hint">This is your master log, one table the whole app reads. Each row looks like what the shortcut writes: | Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |. Anything you paste or load is converted to it.</p>
-    <textarea id="csv" placeholder="| 2026-10-27 14:46| 26.50 | 9.1 | 6 |2.91 | 22.42| 30.06 | TAKE IT | 80.00 | Accept | 15.25 |"></textarea>
-    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button><button class="btn ghost" id="clear">Clear for today</button></div>
+    <div class="seg" id="scopeSeg" style="margin-top:12px"><button data-sc="day">Day</button><button data-sc="week">Week</button><button data-sc="all" class="on">Whole file</button></div>
+    <div class="row" id="scopePick" hidden><button class="btn ghost" id="scOlder" aria-label="Older">&lsaquo;</button><select id="scSel" aria-label="Pick day or week"></select><button class="btn ghost" id="scNewer" aria-label="Newer">&rsaquo;</button></div>
+    <p class="hint" id="scInfo" style="margin:0 0 8px"></p>
+    <textarea id="scopeTxt" hidden spellcheck="false" autocapitalize="off" autocorrect="off" wrap="off"></textarea>
+    <textarea id="csv" spellcheck="false" autocapitalize="off" autocorrect="off" wrap="off" placeholder="| 2026-10-27 14:46| 26.50 | 9.1 | 6 |2.91 | 22.42| 30.06 | TAKE IT | 80.00 | Accept | 15.25 |"></textarea>
+    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="clear">Clear for today</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button></div>
     <p class="hint">Add your offers file or data_archive.zip on the Data page. <button class="btn ghost" style="padding:4px 10px" data-open="data">Open Data page</button></p>
     <div id="check" style="margin-top:12px"></div>
     <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
@@ -226,7 +239,7 @@ function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");setT
 // tabs
 document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.setAttribute("aria-selected",x===b));
-  ["dash","calc","whatif","data","log","earn","hist","sync","settings"].forEach(id=>{const page=$("#"+id);if(page)page.hidden=id!==b.dataset.t});if(b.dataset.t==="whatif")drawWf()});
+  ["dash","calc","whatif","data","log","earn","hist","sync","settings"].forEach(id=>{const page=$("#"+id);if(page)page.hidden=id!==b.dataset.t});if(b.dataset.t==="whatif")drawWf();if(b.dataset.t==="log")scLoad()});
 
 // storage: signed-in cloud account (Supabase) when available, always mirrored to this browser
 let sb=null,sbUser=null;
@@ -521,11 +534,11 @@ $("#c_go").onclick=()=>{const g=num($("#c_g").value);if(g>0&&g!==S.gas){S.gas=g;
  $("#c_out").innerHTML=`<div class="card" style="text-align:center"><div class="num ${v.ok?"good":"bad"}" style="font-size:56px">${v.ok?"TAKE IT":"SKIP"}</div><div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(v.net)}</div><span>Net after car</span></div><div class="stat"><div class="num money">${$f(v.hr)}</div><span>Net $/hr (need ${$f(v.reqH)})</span></div><div class="stat"><div class="num money">${$f(v.pm)}</div><span>Payout $/mile (need ${$f(v.reqM)})</span></div><div class="stat"><div class="num">${Math.round(v.mn)}</div><span>Minutes</span></div></div></div>`};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-$("#load").onclick=async()=>{const mm=masterLog($("#csv").value);if(!logRows(mm)){toast("Need offers to save");return}
+$("#load").onclick=async()=>{if(SC!=="all"){await scSave();return}const mm=masterLog($("#csv").value);if(!logRows(mm)){toast("Need offers to save");return}
   const w=await commitLog(mm);
   $("#saveInfo").textContent=w==="account"?"Saved to your account.":w?"Saved in this browser only.":"Could not save.";
   document.querySelector('[data-t="dash"]').click()};
-$("#clear").onclick=async()=>{const d=new Date(),today=[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");const before=masterLog($("#csv").value),lines=before.split("\n"),keep=lines.slice(2).filter(l=>!l.startsWith("| "+today)&&!l.startsWith("|"+today)),removed=lines.length-2-keep.length;if(!removed){toast("No entries for today");return}const out=masterLog(keep.join("\n")),saved=await commitLog(out);$("#saveInfo").textContent=saved==="account"?"Entries for today cleared and saved to your account.":saved?"Entries for today cleared in this browser; cloud save is pending.":"Could not save the change.";toast(removed+" entries for today cleared")};
+$("#clear").onclick=async()=>{const day=(SC==="day"&&$("#scSel").value)||iso(new Date()),isToday=day===iso(new Date()),lines=logSplit(),keep=lines.filter(l=>dOf(l)!==day),removed=lines.length-keep.length;if(!removed){toast("No entries for "+(isToday?"today":day));return}if(SC==="day"&&!isToday&&!confirm("Delete all "+removed+" entries for "+day+"?"))return;const out=masterLog(keep.join("\n")),saved=await commitLog(out);$("#saveInfo").textContent=saved==="account"?"Entries for "+(isToday?"today":day)+" cleared and saved to your account.":saved?"Entries for "+(isToday?"today":day)+" cleared in this browser; cloud save is pending.":"Could not save the change.";toast(removed+" entries for "+(isToday?"today":day)+" cleared")};
 $("#demo").onclick=()=>{const Z=["Vista","Oceanside","Carlsbad","San Marcos"],o=["date,time,zone,payout,miles,items,minutes,verdict,choice"];
   for(let i=0;i<40;i++){const m=+(1.5+Math.random()*7).toFixed(1),p=+(3+m*(0.9+Math.random()*1.2)).toFixed(2),v=p/m>1.6?"Accept":"Decline",c=Math.random()<.85?v:(v=="Accept"?"Declined":"Accepted");
     o.push(`2026-10-${10+i%14},12:${10+i},${Z[i%4]},${p},${m},${1+i%4},${Math.round(10+m*3.2)},${v},${c=="Accept"?"Accepted":c=="Decline"?"Declined":c}`)}
@@ -607,7 +620,7 @@ function masterLog(text){const seen=new Set(),out=[];
   const k=l.replace(/\s+/g," ").replace(/\s*\|\s*/g,"|");if(seen.has(k))continue;seen.add(k);out.push(l)}
  return HDRM+(out.length?"\n"+out.join("\n"):"")}
 const logRows=t=>Math.max(0,t.split("\n").length-2);
-async function commitLog(out){$("#csv").value=out;isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
+async function commitLog(out){$("#csv").value=out;scLoad();isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
 async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 
 // delete data: per type or everything, from browser and account
@@ -650,6 +663,43 @@ $("#pgList").innerHTML=PGS.map(p=>`<div class="pg"><button class="pgb" data-open
 document.addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){const b=document.querySelector('nav button[data-t="'+o.dataset.open+'"]');if(b)b.click()}});
 document.addEventListener("change",e=>{const i=e.target.closest("[data-pin]");if(!i)return;PIN[i.dataset.pin]=i.checked;try{localStorage.setItem("hh_pins",JSON.stringify(PIN))}catch(x){}applyPins()});
 applyPins();
+
+// Log page sections: Day, Week or Whole file. The whole-file box (#csv) stays the working copy the rest of the app reads.
+let SC="all";
+const dOf=l=>{const m=String(l).match(/^\|\s*(\d{4}-\d{2}-\d{2})/);return m?m[1]:null};
+const scKey=l=>{const d=dOf(l);return d?(SC==="week"?keyOf(d,"week"):d):null};
+function logSplit(){return masterLog($("#csv").value).split("\n").slice(2)}
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function scLabel(k,n){const d=new Date(k+"T12:00:00");if(SC==="week"){const e=new Date(d);e.setDate(e.getDate()+6);return"Week of "+MON[d.getMonth()]+" "+d.getDate()+" to "+MON[e.getMonth()]+" "+e.getDate()+" ("+n+")"}return DOW[d.getDay()]+" "+MON[d.getMonth()]+" "+d.getDate()+", "+d.getFullYear()+" ("+n+")"}
+function scLoad(){
+ const all=SC==="all",csv=$("#csv"),tx=$("#scopeTxt"),pick=$("#scopePick"),info=$("#scInfo");
+ document.querySelectorAll("#scopeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.sc===SC));
+ csv.hidden=!all;tx.hidden=all;pick.hidden=all;
+ $("#clear").textContent=SC==="day"?"Delete day":"Clear for today";
+ $("#load").textContent="Analyze and save";
+ if(all){const n=logSplit().length;info.textContent=n?n+" rows in the whole file. Scroll the box to see them all.":"Nothing logged yet.";return}
+ const lines=logSplit(),cnt={};lines.forEach(l=>{const k=scKey(l);if(k)cnt[k]=(cnt[k]||0)+1});
+ const keys=Object.keys(cnt).sort().reverse(),sel=$("#scSel"),prev=sel.value,today=SC==="week"?keyOf(iso(new Date()),"week"):iso(new Date());
+ sel.innerHTML=keys.map(k=>'<option value="'+k+'">'+scLabel(k,cnt[k])+'</option>').join("");
+ if(!keys.length){tx.value="";tx.placeholder="No rows yet. Add some in Whole file first.";info.textContent="Nothing logged yet.";return}
+ sel.value=keys.includes(prev)?prev:(keys.includes(today)?today:keys[0]);
+ scShow()}
+function scShow(){const k=$("#scSel").value,rs=logSplit().filter(l=>scKey(l)===k);$("#scopeTxt").value=rs.join("\n");
+ $("#scInfo").textContent="Editing "+rs.length+" row"+(rs.length===1?"":"s")+" for this "+SC+". Analyze and save puts your changes back into the master log."}
+async function scSave(){
+ const k=$("#scSel").value;if(!k){toast("Nothing to save");return}
+ const edited=$("#scopeTxt").value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ if(!edited.length&&!confirm("That removes every row for this "+SC+". Continue?"))return;
+ const bad=edited.filter(l=>!logRows(masterLog(l))).length,out=[];let placed=false;
+ for(const l of logSplit()){if(scKey(l)===k){if(!placed){out.push(...edited);placed=true}}else out.push(l)}
+ if(!placed)out.push(...edited);
+ const w=await commitLog(masterLog(out.join("\n")));
+ $("#saveInfo").textContent=(w==="account"?"Saved to your account.":w?"Saved in this browser only.":"Could not save.")+(bad?" "+bad+" line"+(bad===1?"":"s")+" could not be read and "+(bad===1?"was":"were")+" skipped.":"");
+ toast(bad?"Saved, "+bad+" skipped":"Saved")}
+document.querySelectorAll("#scopeSeg button").forEach(b=>b.onclick=()=>{SC=b.dataset.sc;scLoad()});
+$("#scSel").onchange=scShow;
+$("#scOlder").onclick=()=>{const s=$("#scSel");if(s.selectedIndex<s.options.length-1){s.selectedIndex++;scShow()}};
+$("#scNewer").onclick=()=>{const s=$("#scSel");if(s.selectedIndex>0){s.selectedIndex--;scShow()}};
 let appReady=false;
 async function processIncomingHash(){
   if(!appReady)return;
