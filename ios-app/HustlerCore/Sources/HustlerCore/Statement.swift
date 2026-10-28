@@ -5,7 +5,7 @@ import Foundation
 /// Only three things are extracted, because only three are read from page one:
 /// the statement month, the total payout and the payout count. `month` is the
 /// web app's `yyyy-MM` key.
-public struct EarningsStatement: Equatable, Sendable {
+public struct EarningsStatement: Codable, Equatable, Sendable {
     public let month: String
     public let total: Double
     public let payouts: Int
@@ -24,7 +24,7 @@ public struct EarningsStatement: Equatable, Sendable {
 /// the previous value when a statement for the same month is imported again, and
 /// `0` means "no mileage figure", in which case reconciliation leaves the log's
 /// miles untouched.
-public struct StatementMonth: Equatable, Sendable {
+public struct StatementMonth: Codable, Equatable, Sendable {
     public var total: Double
     public var miles: Double
 

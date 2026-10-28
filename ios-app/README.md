@@ -1,11 +1,13 @@
 # ios-app — Hustler native foundation
 
-**Status: Milestone 4 (B1).** Verdicts, acceptance rates, master-log parsing, the
-Scoreboard totals, calendar bucketing, the decline float, the zone / hour /
-month / tax breakdowns, and monthly statement import + reconciliation are ported
-into `HustlerCore` with regression tests pinned to observed web-app behaviour.
-There is still **no UI feature port**, no archive import, no ZIPFoundation, no
-persistence, no Supabase/backend, and no signing.
+**Status: Milestone 5 (statement import in the app).** Verdicts, acceptance
+rates, master-log parsing, the Scoreboard totals, calendar bucketing, the
+decline float, the zone / hour / month / tax breakdowns, and monthly statement
+import + reconciliation are ported into `HustlerCore` with regression tests
+pinned to observed web-app behaviour. The statement pipeline is now reachable
+from the app, and the master log and statements are stored on the device. There
+is still no archive ZIP import, no settings persistence, no Supabase/backend,
+and no signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
@@ -31,6 +33,7 @@ persistence, no Supabase/backend, and no signing.
 | Statement parsing, the statement store and the `settings.monthly` write-through | `StatementParser`, `EarningsStatement`, `StatementBook`, `StatementMonth` | `stmParse()`, `takeStm()` |
 | Page-one PDF text (PDFKit, no OCR) and the paste path | `StatementPDFText`, `StatementParser` | `pdfText()` |
 | Statement allocation by minutes in whole cents, mileage split | `StatementReconciler` | `adjust()` |
+| Import classification, month summaries, versioned store documents | `StatementImporter`, `StatementMonthSummary`, `StatementStoreDocument`, `MasterLogDocument` | new file-format layer, no web equivalent |
 
 Two populations are kept apart on purpose, because the web app measures them
 differently: **money, miles and hours** cover accepted rows only, while
@@ -70,14 +73,45 @@ is no subtraction of shortcut pay and no clamp; `StatementReconcilerTests` pins
 that with a characterization test (`b1_shortcut_ignored`). Any fix is a separate,
 approved change with before/after numbers.
 
-All of this is in memory and local only: no network, no file store, no statement
-data leaving the device.
+All of this stays on the device: no network, no account, no backend. The master
+log and the statement store are written to Application Support by the app layer
+(see below); `HustlerCore` itself performs no file I/O.
+
+### Statement import in the app
+
+`Hustler/Features/Statements/` is the first screen wired to this pipeline,
+reachable from the app shell:
+
+- **Choose a statement PDF** — `.pdf` via `fileImporter`, read inside a
+  security-scoped resource, page one through `StatementPDFText`. A PDF with no
+  page-one text (a scan) is reported as such; it is never retried or OCR'd.
+- **Paste the statement text** — the same parser, no PDF involved.
+- **Master log** — the pipe table is pasted and saved as text; the screen shows
+  how many rows and how many archive rows survive normalisation. There is no
+  archive ZIP import yet, so archive rows have to arrive as log text (the web
+  app's own log export already is pipe-table text).
+- **Statement months** — each stored month with its total, payout count, archive
+  row count, the sum allocated back to those rows, and a note when accepted live
+  pay sits in the same month.
+
+`StatementImporter` classifies submitted text as `parsed`, `emptyText` or
+`unreadable` and builds the month summaries from the same `adjust()` port the
+analytics use, so the screen cannot disagree with the numbers. The view model
+only decides what to say and when to write.
+
+`Hustler/Platform/LocalStore.swift` writes `master-log.json` and
+`statements.json` under `Application Support/Hustler/`, atomically and with
+complete file protection. Both documents carry `schemaVersion: 1`; a file with a
+version the app does not know throws instead of being overwritten, and the screen
+says so rather than silently replacing earnings history.
 
 ## What is deliberately NOT ported yet
 
-Quests, the California pay guarantee, archive/ZIP import, persistence, handoff,
-deep links, and every screen beyond the M0 shell. No UI consumes the statement
-pipeline yet.
+Quests, the California pay guarantee, archive/ZIP import, settings persistence,
+handoff, deep links, and every screen beyond the app shell and Statements. The
+only persisted artefacts are the master log and the statements; there is no
+settings file yet, so nothing outside the statement summary reads a stored
+setting.
 
 The period *slicing* the Scoreboard does around "now" (last 10 days, 8 weeks,
 12 months) and the insertion of an empty current period are presentation and
@@ -168,8 +202,9 @@ CI (`.github/workflows/ios.yml`):
 | Claim | Status |
 |---|---|
 | Source exists | Yes |
-| Core tests compile and pass | Proven locally via `tools/local-test.sh` and in CI |
-| App compiles for iOS | Proven only by CI |
+| Core tests compile and pass | Proven locally via `tools/local-test.sh` (84 tests) and in CI |
+| App compiles for iOS | Proven only by CI — the unsigned simulator build |
+| Statement import reachable in the app | Wired to the pipeline and compiled by CI; never launched by hand on a simulator or device |
 | Installed on a physical iPhone | **No** — needs an Apple signing identity |
 
 [XcodeGen]: https://github.com/yonaskolb/XcodeGen

@@ -1,28 +1,27 @@
 import SwiftUI
 import HustlerCore
 
-/// Milestone 0 shell. It exists to prove the app target builds and can link
-/// `HustlerCore`; it deliberately contains no offer analysis, history, earnings
-/// or California logic.
+/// App shell. Only the statement pipeline is reachable for now; every other
+/// screen from the web app is still unported.
 struct RootView: View {
-    @State private var payoutText: String = ""
-
-    private var payout: Double { Money.parse(payoutText) }
-
     var body: some View {
         NavigationStack {
             Form {
-                Section("Milestone 0") {
-                    Text("Native foundation builds and links HustlerCore.")
-                    Text("No earnings logic is ported yet. Open defect B1 remains documented and unresolved.")
+                Section {
+                    NavigationLink("Statement import") {
+                        StatementImportView()
+                    }
+                    Text("Monthly totals from a statement PDF or pasted text. Each month's total replaces that month's estimated archive pay, to the cent.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                } header: {
+                    Text("Earnings")
                 }
 
-                Section("Formatting check") {
-                    TextField("Payout, e.g. 12.50", text: $payoutText)
-                        .keyboardType(.decimalPad)
-                    LabeledContent("Formatted", value: Money.format(payout))
+                Section("Not ported yet") {
+                    Text("Check and What-if, History and archive ZIP import, Earn, quests, the California guarantee, and the master-log editor beyond raw text.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("Hustler")
