@@ -1,0 +1,98 @@
+name: iOS
+
+on:
+  push:
+    paths:
+      - "ios-app/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "ios-app/**"
+      - ".github/workflows/ios.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+
+jobs:
+  core-tests:
+    name: HustlerCore tests
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Run unit tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --package-path ios-app/HustlerCore 2>&1 | tee core-tests.log
+
+      - name: Assert tests actually executed
+        shell: bash
+        run: |
+          set -o pipefail
+          grep -E "Executed [1-9][0-9]* test" core-tests.log
+          echo "A test really ran (not skipped, not zero)."
+
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-tests-log
+          path: core-tests.log
+          if-no-files-found: warn
+
+  app-build:
+    name: Build iOS app
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate Xcode project
+        working-directory: ios-app
+        run: xcodegen generate --spec project.yml
+
+      - name: Confirm the scheme exists
+        run: xcodebuild -list -project ios-app/Hustler.xcodeproj
+
+      - name: Build for iOS Simulator
+        shell: bash
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ios-app/Hustler.xcodeproj \
+            -scheme Hustler \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath ios-app/.build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee app-build.log
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-build-log
+          path: app-build.log
+          if-no-files-found: warn
