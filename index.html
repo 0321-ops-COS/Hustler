@@ -410,12 +410,15 @@ function analyze(data){
   const M={};acc.forEach(r=>{const k=(r.date||"").slice(0,7);if(!/^\d{4}-\d\d$/.test(k))return;(M[k]=M[k]||[]).push(r)});
   $("#months").innerHTML=Object.keys(M).length?`<table><tr><th>Month</th><th>Orders</th><th>Gross</th><th>Miles</th><th>Net</th><th>Mileage deduction</th></tr>${Object.keys(M).sort().reverse().map(k=>{const a=M[k],g=a.reduce((x,r)=>x+r.p,0),m=a.reduce((x,r)=>x+r.m,0),nt=a.reduce((x,r)=>x+r.net,0);return`<tr><td>${k}</td><td>${a.length}</td><td>${$f(g)}</td><td>${m.toFixed(0)}</td><td>${$f(nt)}</td><td>${$f(m*S.taxRate)}</td></tr>`}).join("")}</table>`:'<p class="hint">Needs dates like 2026-10-24 in the log.</p>';
   // level
-  const L=[["Rookie",0],["Grinder",25],["Operator",100],["Hustler",300],["Legend",800]];
+  const L=[["Rookie",0],["Grinder",25],["Operator",100],["Hustler",300],["Legend",800]],LSTEP=250;
   const nd=acc.length; // completed deliveries only, so it matches DoorDash's completed-orders count
   let i=0;L.forEach((l,j)=>{if(nd>=l[1])i=j});
-  const nx=L[i+1];$("#lvl").textContent=L[i][0]+" · "+nd+" deliveries";
-  $("#xp").style.width=(nx?100*(nd-L[i][1])/(nx[1]-L[i][1]):100)+"%";renderGame(R,RL);
+  let nm=L[i][0],lo=L[i][1],hi=L[i+1]?L[i+1][1]:null;
+  if(hi===null){const k=Math.floor((nd-800)/LSTEP);lo=800+k*LSTEP;hi=lo+LSTEP;nm=k?"Legend "+(k+1<40?rom(k+1):k+1):"Legend"}
+  $("#lvl").textContent=nm+" · "+nd+" deliveries";$("#lvl").title=(hi-nd)+" deliveries to the next level";
+  $("#xp").style.width=Math.max(0,Math.min(100,100*(nd-lo)/(hi-lo)))+"%";renderGame(R,RL);
 }
+const rom=n=>{let r="";[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]].forEach(([v,c])=>{while(n>=v){r+=c;n-=v}});return r};
 function showCheck(d){const el=$("#check");if(!d.length){el.innerHTML="";return}
  const out=["payout","miles","items","minutes"].map(k=>{if(!(k in d[0]))return`<tr><td>${k}</td><td class="bad">column missing</td><td></td></tr>`;
   let f=0,w=0,bad=[];d.forEach((r,j)=>{const v=String(r[k]||"").trim();if(/^\$?-?\d+\.\d+$/.test(v))f++;else if(/^\$?-?\d+$/.test(v))w++;else bad.push(j+2)});
@@ -441,7 +444,7 @@ $("#cpBrief").onclick=async()=>{try{await navigator.clipboard.writeText(brief()+
 async function ingest(t){let j=null;try{j=JSON.parse(t)}catch(e){}
  if(j&&(j.settings||j.csv!==undefined)){if(j.settings){S={...DEF,monthly:j.settings.monthly||{},zoneGas:j.settings.zoneGas||{}};drawFields();await put("settings",S)}
   if(j.csv!==undefined){await commitLog(masterLog(j.csv))}toast("Handoff imported");return}
- const before=masterLog($("#csv").value),n0=logRows(before),out=masterLog(before+"\n"+t),n1=logRows(out);
+ const before=masterLog($("#csv").value),n0=logRows(before),out=mergeLog(before,t),n1=logRows(out);
  if(!n1){toast("Could not read that file");return}
  await commitLog(out);toast((n1-n0)+" new rows added")}
 let STM={};
@@ -566,10 +569,36 @@ function renderGame(R,RL){LG=[R,RL];setTimeout(renderCA,0);
  acc.forEach(r=>{const k=r.date.slice(0,10);dn[k]=(dn[k]||0)+r.net});
  const past=Object.keys(dn).filter(k=>k!==t).map(k=>dn[k]),avg=past.length?past.reduce((a,b)=>a+b,0)/past.length:50,tn=dn[t]||0;
  let st=0,best=0,run=0;RL.forEach(r=>{if(r.v===r.t){run++;best=Math.max(best,run)}else run=0});for(let i=RL.length-1;i>=0&&RL[i].v===RL[i].t;i--)st++;
- const q=(l,a,b,f)=>`<div style="margin:12px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${l}</span><b>${f?$f(a,0)+" / "+$f(b,0):Math.min(a,b)+" / "+b}</b></div><div class="bar"><i style="width:${Math.min(1,a/b)*100}%"></i></div></div>`;
- const fp=RL.length?RL.filter(r=>r.v===r.t).length/RL.length:0,life=acc.reduce((a,r)=>a+r.net,0);
- const B=[["25 offers",RL.length>=25],["10 in a row",best>=10],["85% follow rate",RL.length>=20&&fp>=.85],["$1,000 net",life>=1000]];
- $("#quest").innerHTML=`<h2 style="font-size:17px">Today's quests</h2><p class="hint">Streak: ${st} followed in a row. Best: ${best}.</p>`+q("Follow the call 5 times",fol,5)+q("Beat your average day",tn,Math.max(avg,1),1)+q("10 in a row",st,10)+`<div>${B.map(b=>`<span class="chip ${b[1]?"on":""}">${b[0]}</span>`).join("")}</div>`}
+ renderQuests(R,RL,acc,st,best)}
+// ---- Endless quests: weekly targets come from your own recent weeks, lifetime totals never reset ----
+const NICE=v=>{for(let k=2;k<12;k++)for(const m of[1,2.5,5]){const c=m*Math.pow(10,k);if(c>v)return c}return v*2};
+function weekAggs(R,RL){const W={},g=k=>W[k]=W[k]||{n:0,pay:0,net:0,mi:0,min:0,arch:0,off:0,acc:0,fol:0,yes:0,yesAcc:0};
+ R.forEach(r=>{if(!r.t||!/^\d{4}-\d\d-\d\d/.test(r.date||""))return;const w=g(keyOf(r.date,"week"));w.n++;w.pay+=r.p;w.net+=r.net;w.mi+=r.m;w.min+=r.min;if(r.src==="archive")w.arch++});
+ RL.forEach(r=>{if(!/^\d{4}-\d\d-\d\d/.test(r.date||""))return;const w=g(keyOf(r.date,"week"));w.off++;if(r.t)w.acc++;if(r.v===r.t)w.fol++;if(r.v){w.yes++;if(r.t)w.yesAcc++}});
+ return W}
+const QDEF=[
+ {id:"net",name:"Net earnings",kind:"est",need:w=>w.n>=3,val:w=>w.net,fmt:v=>$f(v,0),base:ws=>{const a=ws.filter(w=>w.n>=5);return a.length?a.reduce((x,w)=>x+w.net,0)/a.length:null},tgt:b=>Math.max(50,b*1.05)},
+ {id:"npm",name:"Net $ per mile",kind:"est",need:w=>w.mi>=10,val:w=>w.net/w.mi,fmt:v=>$f(v),base:ws=>{const a=ws.filter(w=>w.mi>=20),m=a.reduce((x,w)=>x+w.mi,0);return m?a.reduce((x,w)=>x+w.net,0)/m:null},tgt:b=>b*1.02},
+ {id:"nph",name:"Net $ per active hour",kind:"est",need:w=>w.min>=180,val:w=>w.net/(w.min/60),fmt:v=>$f(v),base:ws=>{const a=ws.filter(w=>w.min>=240),h=a.reduce((x,w)=>x+w.min/60,0);return h?a.reduce((x,w)=>x+w.net,0)/h:null},tgt:b=>b*1.02},
+ {id:"fol",name:"Followed the verdict",kind:"measured",need:w=>w.off>=8,val:w=>100*w.fol/w.off,fmt:v=>v.toFixed(0)+"%",base:()=>85,tgt:b=>b},
+ {id:"pick",name:"Took the offers it said yes to",kind:"measured",need:w=>w.yes>=6,val:w=>100*w.yesAcc/w.yes,fmt:v=>v.toFixed(0)+"%",base:()=>90,tgt:b=>b}];
+function questState(W,wk){const ks=Object.keys(W).sort(),res={};
+ QDEF.forEach(q=>{const prior=ks.filter(k=>k<wk).slice(-4).map(k=>W[k]),b=q.base(prior),w=W[wk];
+  res[q.id]={q,b,t:b==null?null:q.tgt(b),has:!!w&&q.need(w),v:w&&q.need(w)?q.val(w):null}});return res}
+function renderQuests(R,RL,acc,st,best){const el=$("#quest");if(!el)return;
+ const W=weekAggs(R,RL),wk=keyOf(iso(new Date()),"week"),cur=questState(W,wk),life=acc.reduce((a,r)=>a+r.net,0);
+ // lifetime quests cleared: every finished week is re-scored from the log with the same rules, so this only grows
+ let cleared=0,weeks=0;Object.keys(W).filter(k=>k<wk).sort().forEach(k=>{const r=questState(W,k);let any=false;QDEF.forEach(q=>{const x=r[q.id];if(x.has&&x.t!=null){any=true;if(x.v>=x.t)cleared++}});if(any)weeks++});
+ const w=W[wk],est=w&&w.arch>0;
+ const row=x=>{const q=x.q,tag=`<span class="chip ${q.kind==="measured"?"on":""}" style="margin:0 0 0 6px;padding:1px 8px">${q.kind==="measured"?"measured":"estimate"}</span>`;
+  if(!x.has)return`<div style="margin:12px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${q.name}${tag}</span><b>--</b></div><p class="hint" style="margin:2px 0 0">Not enough logged this week yet.</p></div>`;
+  if(x.t==null)return`<div style="margin:12px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${q.name}${tag}</span><b>${q.fmt(x.v)}</b></div><p class="hint" style="margin:2px 0 0">Building your baseline: needs a finished prior week.</p></div>`;
+  const done=x.v>=x.t;return`<div style="margin:12px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${done?"✓ ":""}${q.name}${tag}</span><b>${q.fmt(x.v)} / ${q.fmt(x.t)}</b></div><div class="bar"><i style="width:${Math.min(1,x.v/x.t)*100}%"></i></div></div>`};
+ const ml=NICE(life);
+ el.innerHTML=`<h2 style="font-size:17px">This week's quests</h2><p class="hint">Targets are set from your own last 4 weeks, so they rise as you improve and refresh every Monday. Streak: ${st} followed in a row. Best: ${best}.${est?" This week includes archive deliveries, so net figures use estimated pay and miles.":""}</p>`
+ +QDEF.map(q=>row(cur[q.id])).join("")
+ +`<div style="margin:14px 0 4px;font-size:14px;display:flex;justify-content:space-between"><span>Lifetime net (estimate)</span><b>${$f(life,0)} / ${$f(ml,0)}</b></div><div class="bar"><i style="width:${Math.min(1,life/ml)*100}%"></i></div>`
+ +`<p class="hint">Lifetime: ${cleared} weekly quest${cleared===1?"":"s"} cleared over ${weeks} week${weeks===1?"":"s"}. Lifetime totals never reset. Measured = counted straight from your log. Estimate = uses your car-cost settings and offer or archive time and miles, so tips and final pay can differ.</p>`}
 
 // California pay guarantee (weekly)
 let CA={};
@@ -578,26 +607,45 @@ const hm2h=v=>{v=String(v||"").trim();const m=v.match(/^(\d+)\s*[h:]\s*(\d+)?/i)
 function caAuto(k){const R=(LG[0]||[]).filter(r=>r.t&&weekKey(r.date)===k);return{pay:R.reduce((a,r)=>a+r.p,0),hours:R.reduce((a,r)=>a+r.min,0)/60,miles:R.reduce((a,r)=>a+r.m,0),n:R.length}}
 function caMerge(k){const a=caAuto(k),m=CA[k]||{};return{...m,pay:m.pay>0?m.pay:a.pay,hours:m.hours>0?m.hours:a.hours,miles:m.miles>0?m.miles:a.miles,n:a.n,au:{pay:!(m.pay>0),hours:!(m.hours>0),miles:!(m.miles>0)}}}
 function caEst(e,logMiles){const h=e.hours||0,mi=e.miles>0?e.miles:logMiles,g=S.caPct/100*S.caWage*h+S.caMile*mi,adj=Math.max(0,g-(e.pay||0));return{g,mi,adj,miSrc:e.miles>0&&!(e.au&&e.au.miles)?"entered":"from log"}}
-let CAH=null;
+let CAH=null,CAHW=null;
 const CAMAX=84;
+// pace = pay and miles per active hour over this week plus up to 3 earlier weeks (an estimate, not a promise)
+function caPace(wk){const W={};(LG[0]||[]).forEach(r=>{if(!r.t||!/^\d{4}-\d\d-\d\d/.test(r.date||""))return;const k=weekKey(r.date),g=W[k]=W[k]||{pay:0,h:0,mi:0};g.pay+=r.p;g.h+=r.min/60;g.mi+=r.m});
+ const ks=Object.keys(W).filter(k=>k<=wk&&W[k].h>=1).sort().slice(-4);if(!ks.length)return null;
+ const t=ks.reduce((a,k)=>({pay:a.pay+W[k].pay,h:a.h+W[k].h,mi:a.mi+W[k].mi}),{pay:0,h:0,mi:0});
+ return{pph:t.pay/t.h,mph:t.mi/t.h,weeks:ks.length,avgH:t.h/ks.length}}
+function caProject(A,pace,h,rate,mile){const addPay=pace?pace.pph*h:0,addMi=pace?pace.mph*h:0,T=A.hours+h,M=A.miles+addMi,pay=A.pay+addPay,g=rate*T+mile*M,adj=Math.max(0,g-pay);
+ return{addPay,addMi,T,M,pay,g,adj,total:pay+adj,soFarG:rate*A.hours+mile*A.miles,soFarAdj:Math.max(0,rate*A.hours+mile*A.miles-A.pay)}}
 function renderCA(){const el=$("#ca");if(!el)return;
-  const wk=weekKey(iso(new Date())),AU=caAuto(wk),ok=AU.n>0&&AU.hours>0;
-  const rate=S.caPct/100*S.caWage,hm=h=>Math.floor(h)+"h "+String(Math.round((h%1)*60)).padStart(2,"0")+"m";
-  if(!ok){el.innerHTML=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">Week of ${wk}</p><div class="num" style="font-size:24px;font-weight:700;margin-top:10px">Not enough data</div><p class="hint">No accepted offers with active time logged this week yet. The estimate and the next week guess fill in on their own once the log has them.</p>`;return}
-  const g=rate*AU.hours+S.caMile*AU.miles,adj=Math.max(0,g-AU.pay),pph=AU.pay/AU.hours,mph=AU.miles/AU.hours;
-  if(CAH===null)CAH=Math.min(CAMAX,Math.max(1,Math.round(AU.hours)));
-  el.innerHTML=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">Week of ${wk}. Estimated from ${AU.n} accepted offer${AU.n===1?"":"s"} in your log. No typing needed. Offer payouts can include tips, which makes the estimate a little high or low.</p>
-  <div class="grid" style="margin-top:12px"><div class="stat"><div class="num money">${$f(adj)}</div><span>Estimated adjustment</span></div><div class="stat"><div class="num">${$f(g)}</div><span>Guaranteed earnings</span></div><div class="stat"><div class="num">${hm(AU.hours)}</div><span>Active time</span></div><div class="stat"><div class="num">${AU.miles.toFixed(0)}</div><span>Miles</span></div></div>
-  <p class="hint" style="font-family:ui-monospace,Menlo,monospace">(${$f(rate)} × ${AU.hours.toFixed(1)} h) + (${$f(S.caMile)} × ${AU.miles.toFixed(0)} mi) = ${$f(g)}<br>${$f(g)} − ${$f(AU.pay)} pay = ${$f(adj)}</p>
-  <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
-  <h2 style="font-size:17px">Next week guess</h2><p class="hint">Uses this week's pace: ${$f(pph)} pay per active hour and ${mph.toFixed(1)} miles per active hour. Move the slider to try different hours. The top is ${CAMAX} (12 hours a day), the most you can dash before a required 6 hour break.</p>
-  <div style="display:flex;align-items:center;gap:12px;margin:12px 0"><input type="range" id="caH" min="0" max="${CAMAX}" step="1" value="${CAH}" style="flex:1;padding:0"><b id="caHo" style="min-width:64px;text-align:right">${CAH} h</b></div>
-  <div class="grid"><div class="stat"><div class="num money" id="caNadj"></div><span>Estimated adjustment</span></div><div class="stat"><div class="num" id="caNpay"></div><span>Projected DoorDash pay</span></div><div class="stat"><div class="num" id="caNg"></div><span>Guaranteed earnings</span></div><div class="stat"><div class="num" id="caNtot"></div><span>Week total (no tips)</span></div></div>
+  const today=iso(new Date()),wk=weekKey(today),A=caMerge(wk),rate=S.caPct/100*S.caWage,pace=caPace(wk);
+  const ws=new Date(wk+"T12:00:00"),we=new Date(ws);we.setDate(we.getDate()+6);
+  const fd=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"}),left=Math.max(0,Math.round((we-new Date(today+"T12:00:00"))/864e5));
+  const hm=h=>Math.floor(h)+"h "+String(Math.round((h%1)*60)).padStart(2,"0")+"m";
+  const head=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">Pay week ${fd(ws)} to ${fd(we)} (Monday to Sunday). ${left} day${left===1?"":"s"} left after today.</p>`;
+  if(!(A.hours>0)&&!pace){el.innerHTML=head+`<div class="num" style="font-size:24px;font-weight:700;margin-top:10px">Not enough data</div><p class="hint">No accepted offers with active time in your log yet, so there is nothing to project. Enter this week's hours and pay under your California entries, or log offers.</p>`;return}
+  const remMax=Math.max(0,Math.floor(Math.min(CAMAX-A.hours,12*(left+1))));
+  if(CAHW!==wk||CAH===null){CAHW=wk;CAH=pace?Math.min(remMax,Math.max(0,Math.round(pace.avgH-A.hours))):0}
+  CAH=Math.min(CAH,remMax);
+  const src=A.au.hours?"from your log, time is estimated":"entered by you";
+  el.innerHTML=head+`<p class="hint">Offer payouts can include tips, which makes any figure here a little high or low. Everything below is an estimate, not a guaranteed payout.</p>
+  <div class="card" style="margin:10px 0"><table><tr><th></th><th>So far<br><small>actual</small></th><th>Added<br><small>projected</small></th><th>Week total<br><small>estimate</small></th></tr>
+  <tr><td>Active time</td><td id="caA1"></td><td id="caP1"></td><td id="caT1"></td></tr>
+  <tr><td>Miles</td><td id="caA2"></td><td id="caP2"></td><td id="caT2"></td></tr>
+  <tr><td>DoorDash pay</td><td id="caA3"></td><td id="caP3"></td><td id="caT3"></td></tr>
+  <tr><td>Guarantee level</td><td id="caA4"></td><td></td><td id="caT4"></td></tr>
+  <tr><td>Adjustment</td><td id="caA5"></td><td></td><td id="caT5"></td></tr>
+  <tr><td><b>Pay + adjustment</b></td><td id="caA6"></td><td></td><td id="caT6"><b></b></td></tr></table>
+  <p class="hint" style="margin-top:8px">So far: ${A.n} accepted offer${A.n===1?"":"s"} this week; active time and miles ${src}.</p></div>
+  ${pace?`<p class="hint">Rest of the week: move the slider to try different extra active hours. Pace used: ${$f(pace.pph)} pay and ${pace.mph.toFixed(1)} miles per active hour (${pace.weeks} week${pace.weeks===1?"":"s"} of your log). The slider tops out at ${remMax} h: ${CAMAX} h a week and 12 h a day.</p>
+  <div style="display:flex;align-items:center;gap:12px;margin:12px 0"><input type="range" id="caH" min="0" max="${remMax}" step="1" value="${CAH}" style="flex:1;padding:0"><b id="caHo" style="min-width:64px;text-align:right"></b></div>`:`<p class="hint">Not enough history to project a pace yet, so only the actual so far is shown.</p>`}
   <p class="hint" id="caNeq" style="font-family:ui-monospace,Menlo,monospace"></p>`;
-  const upd=()=>{const h=CAH,pay=pph*h,mi=mph*h,gg=rate*h+S.caMile*mi,aj=Math.max(0,gg-pay);
-    $("#caHo").textContent=h+" h";$("#caNadj").textContent=$f(aj);$("#caNpay").textContent=$f(pay);$("#caNg").textContent=$f(gg);$("#caNtot").textContent=$f(pay+aj);
-    $("#caNeq").innerHTML=`(${$f(rate)} × ${h} h) + (${$f(S.caMile)} × ${mi.toFixed(0)} mi) = ${$f(gg)}<br>${$f(gg)} − ${$f(pay)} pay = ${$f(aj)}`};
-  $("#caH").oninput=e=>{CAH=+e.target.value;upd()};upd()}
+  const upd=()=>{const h=pace?CAH:0,P=caProject(A,pace,h,rate,S.caMile),set=(id,v)=>{const e=$("#"+id);if(e)e.innerHTML=v};
+    if($("#caHo"))$("#caHo").textContent="+"+h+" h";
+    set("caA1",hm(A.hours));set("caA2",A.miles.toFixed(0));set("caA3",$f(A.pay));set("caA4",$f(P.soFarG));set("caA5",$f(P.soFarAdj));set("caA6",$f(A.pay+P.soFarAdj));
+    set("caP1",pace?"+"+hm(h):"--");set("caP2",pace?"+"+P.addMi.toFixed(0):"--");set("caP3",pace?"+"+$f(P.addPay):"--");
+    set("caT1",hm(P.T));set("caT2",P.M.toFixed(0));set("caT3",$f(P.pay));set("caT4",$f(P.g));set("caT5",$f(P.adj));set("caT6","<b>"+$f(P.total)+"</b>");
+    $("#caNeq").innerHTML=`(${$f(rate)} × ${P.T.toFixed(1)} h) + (${$f(S.caMile)} × ${P.M.toFixed(0)} mi) = ${$f(P.g)}<br>${$f(P.g)} − ${$f(P.pay)} pay = ${$f(P.adj)} adjustment (never below $0)`};
+  if($("#caH"))$("#caH").oninput=e=>{CAH=+e.target.value;upd()};upd()}
 $("#seg").onclick=e=>{const b=e.target.closest("button");if(!b)return;PER=b.dataset.p;document.querySelectorAll("#seg button").forEach(x=>x.classList.toggle("on",x===b));renderGame(LG[0],LG[1])};
 $("#runSc").onclick=()=>{location.href="shortcuts://run-shortcut?name="+encodeURIComponent(CFG.shortcutName)};
 $("#tstLink").onclick=()=>{const d=new Date(),z=n=>String(n).padStart(2,"0");showTest("| "+d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate())+" "+z(d.getHours())+":"+z(d.getMinutes())+" | 12.50 | 4.2 | 3 | 2.98 | 9.10 | 21.40 | TAKE IT | 89 | Accept | 25 |")};
@@ -621,15 +669,25 @@ function csvToPipe(l){const c=l.split(",").map(x=>x.trim());if(c.length<9||!/^[0
  const g=i=>c[i]||"",src=g(9),d=(g(0)+" "+g(1)).trim();
  if(src==="shortcut"&&c.length>=15)return"| "+[d,g(3),g(4),g(5),g(10),g(11),g(12),g(7),g(13),g(8),g(14)].join(" | ")+" |";
  return"| "+[d,g(3),g(4),g(5),g(10),g(11),g(12),g(7),g(13),g(8),g(14),g(2),g(6),src].join(" | ")+" |"}
+const isArchLine=l=>/\|\s*archive\s*\|\s*$/.test(l);
+// Exact-duplicate lines are dropped for shortcut rows (replayed offers), but never for archive rows:
+// two stacked deliveries can produce identical archive lines and each one is a real delivery.
 function masterLog(text){const seen=new Set(),out=[];
  for(const raw of String(text||"").split(/\r?\n/)){let l=raw.trim();if(!l)continue;
   if(l.startsWith("|")){const c=l.split("|").slice(1,-1).map(x=>x.trim());if(c.length<10||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}/.test(c[0])||isNaN(parseFloat(c[1].replace(/[$,]/g,""))))continue}
   else{if(/^date\s*,/i.test(l)||!l.includes(","))continue;l=csvToPipe(l);if(!l)continue}
+  if(isArchLine(l)){out.push(l);continue}
   const k=l.replace(/\s+/g," ").replace(/\s*\|\s*/g,"|");if(seen.has(k))continue;seen.add(k);out.push(l)}
  return HDRM+(out.length?"\n"+out.join("\n"):"")}
+// Add new text to an existing log. Archive lines already present are matched by count, so merging twice never doubles them.
+function mergeLog(cur,add){const a=masterLog(cur),have={},sn=l=>l.replace(/\s+/g," ");
+ a.split("\n").slice(2).forEach(l=>{if(isArchLine(l)){const k=sn(l);have[k]=(have[k]||0)+1}});
+ const seenA={},keep=[];
+ masterLog(add).split("\n").slice(2).forEach(l=>{if(isArchLine(l)){const k=sn(l);seenA[k]=(seenA[k]||0)+1;if(seenA[k]<=(have[k]||0))return}keep.push(l)});
+ return masterLog(a+(keep.length?"\n"+keep.join("\n"):""))}
 const logRows=t=>Math.max(0,t.split("\n").length-2);
 async function commitLog(out){$("#csv").value=out;scLoad();isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
-async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
+async function addRow(l){const cur=masterLog($("#csv").value),out=mergeLog(cur,l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 
 // delete data: per type or everything, from browser and account
 async function wipeFiles(){if(!sb||!sbUser)return 0;let n=0;try{const l=await tmo(sb.storage.from("uploads").list(sbUser.id,{limit:1000}),15000);const ps=(l.data||[]).map(f=>sbUser.id+"/"+f.name);if(ps.length){const r=await tmo(sb.storage.from("uploads").remove(ps),30000);if(!r.error)n=ps.length}}catch(e){}return n}
@@ -653,7 +711,7 @@ async function pullOffers(manual){
   try{
     const r=await tmo(sb.from("offers").select("row_text").order("ts",{ascending:true}).order("id",{ascending:true}).limit(5000),15000);
     if(r.error){if(manual)toast("Could not read offers: "+r.error.message);return 0}
-    const raw=($("#csv").value||"").trim(),cur=masterLog(raw),out=masterLog(cur+"\n"+(r.data||[]).map(o=>o.row_text||"").join("\n"));
+    const raw=($("#csv").value||"").trim(),cur=masterLog(raw),out=mergeLog(cur,(r.data||[]).map(o=>o.row_text||"").join("\n"));
     const added=logRows(out)-logRows(cur);
     if(added<=0&&(cur===raw||!raw)){if(manual)toast("No new offers from the shortcut");return 0}
     await commitLog(out);
