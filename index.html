@@ -151,7 +151,7 @@ nav button[hidden]{display:none}
 <section id="settings" hidden>
   <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
   <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Nothing here changes your log or your numbers.</p><div class="row"><button class="btn ghost" id="tstLink">Send a test offer</button><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
-  <div class="card"><h2 style="font-size:17px">Clean up replayed offers</h2><p class="hint">Removes shortcut rows with a negative Slack value (replayed test offers with wrong times) from your master log and your offers inbox. It asks before deleting anything.</p><div class="row"><button class="btn ghost" id="fixReplay">Remove replayed offers</button></div></div>
+  <div class="card"><h2 style="font-size:17px">Rebuild archive rows</h2><p class="hint">Rebuilds every DoorDash archive row in your master log from your saved archive. Live shortcut rows are not touched. Duplicates between the archive and shortcut rows are hidden in the totals, never deleted.</p><div class="row"><button class="btn ghost" id="rebuildArch">Rebuild archive rows</button></div></div>
   <div class="card"><h2 style="font-size:17px">Pages</h2><p class="hint">Tap a bar to open that page. Use its switch to add or remove it from the menu.</p><div id="pgList"></div></div>
 </section>
 <section id="log" hidden>
@@ -628,13 +628,7 @@ function masterLog(text){const seen=new Set(),out=[];
   const k=l.replace(/\s+/g," ").replace(/\s*\|\s*/g,"|");if(seen.has(k))continue;seen.add(k);out.push(l)}
  return HDRM+(out.length?"\n"+out.join("\n"):"")}
 const logRows=t=>Math.max(0,t.split("\n").length-2);
-// Same rule as dedupeArch, applied to the saved master log text so the stored copy loses the duplicate archive rows too.
-function dedupeLog(csv){const L=masterLog(csv).split("\n"),rs=L.slice(2);if(!rs.length)return L.join("\n");
- const P=parse(HDRM+"\n"+rs.join("\n"));if(P.length!==rs.length)return L.join("\n");
- const need={},key=r=>(r.date||"").slice(0,10)+"|"+num(r.items);
- P.forEach(r=>{if(r.src!=="archive"&&took(r.choice))need[key(r)]=(need[key(r)]||0)+1});
- return L.slice(0,2).concat(rs.filter((l,i)=>{const r=P[i];if(r.src!=="archive")return true;const k=key(r);if(need[k]>0){need[k]--;return false}return true})).join("\n")}
-async function commitLog(out){out=dedupeLog(out);$("#csv").value=out;scLoad();isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
+async function commitLog(out){$("#csv").value=out;scLoad();isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
 async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 
 // delete data: per type or everything, from browser and account
@@ -668,15 +662,7 @@ async function pullOffers(manual){
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&appReady)pullOffers()});
 $("#pullOffers").onclick=()=>pullOffers(true);
-$("#fixReplay").onclick=async()=>{
-  const neg=l=>/^-\d/.test((String(l).split("|")[11]||"").trim());
-  const lines=logSplit(),bad=lines.filter(neg);let ids=[];
-  try{if(sb&&sbUser){const r=await tmo(sb.from("offers").select("id,row_text"),15000);if(r.error){toast("Could not read offers: "+r.error.message);return}ids=(r.data||[]).filter(o=>neg(o.row_text||"")).map(o=>o.id)}}catch(e){toast("Could not reach your offers");return}
-  if(!bad.length&&!ids.length){toast("Nothing to remove");return}
-  if(!confirm("Remove "+bad.length+" replayed row"+(bad.length===1?"":"s")+" from your log and "+ids.length+" from your offers inbox?"))return;
-  try{if(ids.length){const d=await tmo(sb.from("offers").delete().in("id",ids),15000);if(d.error){toast("Could not delete offers: "+d.error.message);return}}}catch(e){toast("Could not reach your offers");return}
-  await commitLog(masterLog(lines.filter(l=>!neg(l)).join("\n")));
-  toast("Removed "+bad.length+" from log, "+ids.length+" from inbox");document.querySelector('[data-t="dash"]').click()};
+$("#rebuildArch").onclick=async()=>{if(!ARCH.length){toast("No saved archive found");return}if(!confirm("Rebuild all archive rows from your saved DoorDash archive? Live shortcut rows are not touched."))return;await toLog();toast("Archive rows rebuilt");document.querySelector('[data-t="dash"]').click()};
 $("#pasteRows").onclick=async()=>{try{await ingest(await navigator.clipboard.readText())}catch(e){toast("Paste blocked")}};
 const PGS=[["log","Master file","View, edit and save the master log"],["data","Data","Drop offers, statements and archive files"],["earn","Earnings","Read your monthly statements"],["hist","History","Load your DoorDash data archive"],["sync","Handoff","Export or import for another AI"]];
 let PIN={};try{PIN=JSON.parse(localStorage.getItem("hh_pins")||"{}")}catch(e){}
@@ -745,7 +731,7 @@ window.addEventListener("hashchange",()=>{
   drawFields();renderGame([],[]);renderMaster();
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=dedupeLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
   await pullOffers();
