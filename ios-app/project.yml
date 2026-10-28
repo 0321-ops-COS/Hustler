@@ -40,6 +40,9 @@ targets:
         CODE_SIGN_STYLE: Automatic
     dependencies:
       - package: HustlerCore
+        product: HustlerCore
+      - package: HustlerCore
+        product: HustlerArchive
 
 schemes:
   Hustler:

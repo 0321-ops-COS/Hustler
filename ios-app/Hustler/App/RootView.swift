@@ -19,7 +19,7 @@ struct RootView: View {
                 }
 
                 Section("Not ported yet") {
-                    Text("Check and What-if, History and archive ZIP import, Earn, quests, the California guarantee, and the master-log editor beyond raw text.")
+                    Text("Check and What-if, History, Earn, quests, the California guarantee, and the master-log editor beyond raw text.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import HustlerCore
+import HustlerArchive
 
 /// Screen state for statement import. It owns no arithmetic and no durability
 /// rules: parsing, allocation and month summaries come from `HustlerCore`, and
@@ -25,6 +26,8 @@ final class StatementImportModel: ObservableObject {
     @Published var logDraft: String
     @Published var pasteDraft: String = ""
     @Published private(set) var notice: Notice?
+    @Published private(set) var archiveCounts: ArchiveImportCounts?
+    @Published private(set) var isImportingArchive = false
 
     private let library: LocalLibrary
 
@@ -152,6 +155,68 @@ final class StatementImportModel: ObservableObject {
                     + "a line like \"October 2026 Statement\", and \"Total Payouts $1,234.56\".",
                 isFailure: true
             )
+        }
+    }
+
+    // MARK: - DoorDash archive
+
+    /// Reads and converts the ZIP off the main thread, then persists the merged
+    /// log through `LocalLibrary`. Success is reported only after the write
+    /// succeeded, and a failed write leaves the in-memory log as it was.
+    func importArchive(at url: URL) {
+        if let problem = logProblem {
+            notice = Notice(text: problem, isFailure: true)
+            return
+        }
+
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer {
+            if scoped { url.stopAccessingSecurityScopedResource() }
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            notice = Notice(text: "That archive could not be read.", isFailure: true)
+            return
+        }
+
+        let existing = log.text
+        archiveCounts = nil
+        isImportingArchive = true
+
+        Task {
+            let prepared: Result<ArchiveImportResult, Error>
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try ArchiveImporter.prepare(archiveData: data, existingLog: existing)
+                }.value
+                prepared = .success(result)
+            } catch {
+                prepared = .failure(error)
+            }
+
+            isImportingArchive = false
+
+            switch prepared {
+            case let .success(result):
+                do {
+                    try library.saveLog(result.mergedLog)
+                    refresh()
+                    archiveCounts = result.counts
+                    notice = Notice(
+                        text: "Added \(result.counts.newlyAdded) rows from the archive; "
+                            + "\(result.counts.alreadyPresent) were already in your log.",
+                        isFailure: false
+                    )
+                } catch {
+                    archiveCounts = nil
+                    notice = Notice(text: error.localizedDescription, isFailure: true)
+                }
+            case let .failure(error):
+                notice = Notice(text: error.localizedDescription, isFailure: true)
+            }
         }
     }
 

@@ -12,6 +12,7 @@ struct StatementImportView: View {
 
     @StateObject private var model = StatementImportModel()
     @State private var choosingPDF = false
+    @State private var choosingArchive = false
 
     var body: some View {
         Form {
@@ -25,6 +26,7 @@ struct StatementImportView: View {
 
             statementsSection
             logSection
+            archiveSection
             monthsSection
         }
         .navigationTitle("Statements")
@@ -33,6 +35,14 @@ struct StatementImportView: View {
             switch result {
             case let .success(url):
                 model.importPDF(at: url)
+            case let .failure(error):
+                model.reportFailure(error)
+            }
+        }
+        .fileImporter(isPresented: $choosingArchive, allowedContentTypes: [.zip]) { result in
+            switch result {
+            case let .success(url):
+                model.importArchive(at: url)
             case let .failure(error):
                 model.reportFailure(error)
             }
@@ -115,6 +125,37 @@ struct StatementImportView: View {
         }
     }
 
+    // MARK: - DoorDash archive
+
+    @ViewBuilder
+    private var archiveSection: some View {
+        Section {
+            Button {
+                choosingArchive = true
+            } label: {
+                Label("Choose data_archive.zip", systemImage: "shippingbox")
+            }
+            .disabled(model.isImportingArchive)
+
+            if model.isImportingArchive {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Reading the archive…")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let counts = model.archiveCounts {
+                ArchiveResultRows(counts: counts)
+            }
+        } header: {
+            Text("DoorDash archive")
+        } footer: {
+            Text("Reads delivery_information.csv from the zip on this device and merges new deliveries into the master log — never replacing or removing existing rows. The archive has no pay or mileage: payout is $7.00 per delivery and miles are 20 mph from active minutes, so these are estimates that monthly statements then correct.")
+        }
+    }
+
     // MARK: - Months
 
     @ViewBuilder
@@ -128,6 +169,30 @@ struct StatementImportView: View {
                     StatementMonthRow(summary: summary)
                 }
             }
+        }
+    }
+}
+
+private struct ArchiveResultRows: View {
+    let counts: ArchiveImportCounts
+
+    var body: some View {
+        LabeledContent("Rows in the delivery file", value: "\(counts.rowsInspected)")
+        LabeledContent("Deliveries used", value: "\(counts.validRows)")
+        LabeledContent("New rows added", value: "\(counts.newlyAdded)")
+        LabeledContent("Already present", value: "\(counts.alreadyPresent)")
+        LabeledContent("Rows kept", value: "\(counts.retainedRows)")
+        if counts.cancelledSkipped > 0 {
+            LabeledContent("Cancelled", value: "\(counts.cancelledSkipped)")
+        }
+        if counts.missingDeliverySkipped > 0 {
+            LabeledContent("No delivery time", value: "\(counts.missingDeliverySkipped)")
+        }
+        if counts.invalidSkipped > 0 {
+            LabeledContent("Unreadable rows", value: "\(counts.invalidSkipped)")
+        }
+        if counts.droppedNonPositiveIntervals > 0 {
+            LabeledContent("Ended before pickup", value: "\(counts.droppedNonPositiveIntervals)")
         }
     }
 }

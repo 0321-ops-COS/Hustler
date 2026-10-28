@@ -5,9 +5,9 @@ rates, master-log parsing, the Scoreboard totals, calendar bucketing, the
 decline float, the zone / hour / month / tax breakdowns, and monthly statement
 import + reconciliation are ported into `HustlerCore` with regression tests
 pinned to observed web-app behaviour. The statement pipeline is now reachable
-from the app, and the master log and statements are stored on the device. There
-is still no archive ZIP import, no settings persistence, no Supabase/backend,
-and no signing.
+from the app, the master log and statements are stored on the device, and
+DoorDash `data_archive.zip` import is wired. There is still no settings
+persistence, no Supabase/backend, and no signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
@@ -16,6 +16,10 @@ and no signing.
   PDFKit for page-one statement text where that framework exists. No UI, no
   clock, no network. Its one file-system type is `LocalStore`, and every test of
   it runs against a temporary directory.
+- `HustlerArchive` is a second target in the same package and the only place a
+  third-party dependency appears: **ZIPFoundation 0.9.20** (MIT, no transitive
+  dependencies on Apple platforms), pinned exactly. `HustlerCore` does not depend
+  on it.
 
 ## What is ported
 
@@ -36,6 +40,7 @@ and no signing.
 | Statement allocation by minutes in whole cents, mileage split | `StatementReconciler` | `adjust()` |
 | Import classification, month summaries, versioned store documents | `StatementImporter`, `StatementMonthSummary`, `StatementStoreDocument`, `MasterLogDocument` | new file-format layer, no web equivalent |
 | On-device files: blocked writes after a failed load, explicit recovery, commit only after a successful write | `LocalStore`, `LocalLibrary`, `StoreArtefact` | new file-format layer, no web equivalent |
+| DoorDash archive ZIP → delivery CSV → archive rows, overlap minutes, estimates, merge | `DeliveryArchiveFile`, `DeliveryCSV`, `ArchiveImporter` | `importZip()`, `loadDeliv()`, `toLog()` |
 
 Two populations are kept apart on purpose, because the web app measures them
 differently: **money, miles and hours** cover accepted rows only, while
@@ -89,9 +94,8 @@ reachable from the app shell:
   page-one text (a scan) is reported as such; it is never retried or OCR'd.
 - **Paste the statement text** — the same parser, no PDF involved.
 - **Master log** — the pipe table is pasted and saved as text; the screen shows
-  how many rows and how many archive rows survive normalisation. There is no
-  archive ZIP import yet, so archive rows have to arrive as log text (the web
-  app's own log export already is pipe-table text).
+  how many rows and how many archive rows survive normalisation.
+- **DoorDash archive** — imports `data_archive.zip`; see the next section.
 - **Statement months** — each stored month with its total, payout count, archive
   row count, the sum allocated back to those rows, and a note when accepted live
   pay sits in the same month.
@@ -128,9 +132,67 @@ original bytes, prove a failed load blocks the next write, prove a failed save
 changes neither memory nor the file, and prove one artefact's failure leaves the
 other working. None of it involves a simulator.
 
+### DoorDash archive import
+
+`data_archive.zip` (Data → History in the web app) is read by `HustlerArchive`,
+the only target that links a third-party library.
+
+- **One entry only.** The first member whose name ends in
+  `delivery_information.csv` (case-insensitive, nested paths allowed) is read
+  into memory. Nothing is extracted to disk, so the archive's
+  personal-information files are never written anywhere.
+- **Columns**, matched exactly after lowercasing as the web app matches them:
+  `order_created_time` and `actual_delivery_time` are required;
+  `actual_pickup_time`, `store_name`, `total_item_count` and `order_status` are
+  optional. A missing required column is an error, not an empty import.
+- **Rows.** A row is skipped when `order_status` contains `cancel`, when the
+  delivery time is empty, when a timestamp will not parse, or when delivery is
+  not after pickup. The remaining rows become archive rows through the existing
+  `csvToPipe()` path, so they are indistinguishable from rows the web app wrote.
+- **Minutes.** Each delivery's window starts eight minutes before pickup and ends
+  at delivery. Overlapping deliveries share the block's minutes equally, exactly
+  as `toLog()` spreads them. Those minutes are the weights statement
+  reconciliation later allocates by.
+- **Estimates, not archive data.** The archive carries no pay or mileage. Payout
+  is a documented constant (`$7.00`) and miles are `minutes / 60 × 20 mph`,
+  matching the web app's current defaults; both are parameters on
+  `ArchiveImporter.prepare`, so a later settings feature can supply configured
+  values without changing this code. The archive's own timestamps are truncated
+  to 16 characters, read as **UTC** and formatted in `America/Los_Angeles` — the
+  web app's literal-`Z` conversion, which shifts wall-clock times back 7–8 hours
+  and can move a delivery into the previous day or month. It is preserved
+  deliberately and covered by DST and month-boundary tests, but it has **not**
+  been checked against a real DoorDash archive.
+- **Merge, never replace.** Rows go in through `MasterLog.merge` and its existing
+  normalised-line/count-matched key, so re-importing the same archive adds
+  nothing, a larger export adds only the new deliveries, and no row from a
+  previous export is removed. This is a deliberate, approved divergence from the
+  web app's `toLog()`, which deletes every archive row and rebuilds them.
+- **Limits.** 64 MiB archive, 1,000 entries, 32 MiB delivery file, all checked
+  before extraction. Encrypted archives are rejected as an unreadable member
+  because ZIPFoundation exposes no public encryption flag, so the message names
+  both encryption and corruption rather than guessing.
+- **Failure safety.** The whole archive is read and converted before anything is
+  written, and the merged log is saved through `LocalLibrary`: a failed write
+  leaves both memory and the previous file bytes untouched, and an unreadable
+  master log blocks archive import until the explicit recovery described above.
+
+Counts, which do not overlap: `rowsInspected = validRows + cancelledSkipped +
+missingDeliverySkipped + invalidSkipped + droppedNonPositiveIntervals`, and
+`validRows = alreadyPresent + newlyAdded`. `retainedRows` is the log's row count
+before the import, and every one of those rows is still there afterwards.
+
+`ArchiveImportTests` covers the ZIP reader on generated fixtures (deflate and
+stored), exact pipe-row output, required and optional columns, malformed archives
+and CSV, a missing `delivery_information.csv`, duplicate rows inside one archive,
+idempotent re-import, superset merges, preserved shortcut and older archive rows,
+all three limits, both DST transitions, a month-boundary rollover, overlap
+sharing, negative intervals, and a blocked or unwritable master log never being
+overwritten.
+
 ## What is deliberately NOT ported yet
 
-Quests, the California pay guarantee, archive/ZIP import, settings persistence,
+Quests, the California pay guarantee, settings persistence,
 handoff, deep links, and every screen beyond the app shell and Statements. The
 only persisted artefacts are the master log and the statements; there is no
 settings file yet, so nothing outside the statement summary reads a stored
@@ -163,7 +225,8 @@ ios-app/tools/local-test.sh --filter ScoreboardTests
 - Tarball is cached in `~/.cache/hustler`, toolchain in `~/.local/swift-<version>`.
 - On macOS it uses the Xcode toolchain and downloads nothing. Needs no root.
 - On a bare Ubuntu image, missing shared libraries can be installed with
-  `apt-get install -y libcurl4 libxml2 libncurses6 libsqlite3-0`; the GitHub
+  `apt-get install -y libcurl4 libxml2 libncurses6 libsqlite3-0 zlib1g-dev`;
+  `zlib1g-dev` is what ZIPFoundation links against on Linux. The GitHub
   `ubuntu-latest` image already has them.
 
 ## Parity drift detection
@@ -225,9 +288,12 @@ CI (`.github/workflows/ios.yml`):
 | Claim | Status |
 |---|---|
 | Source exists | Yes |
-| Core tests compile and pass | Proven locally via `tools/local-test.sh` (102 tests) and in CI |
+| Core tests compile and pass | Proven locally via `tools/local-test.sh` (131 tests) and in CI |
 | App compiles for iOS | Proven only by CI — the unsigned simulator build |
 | Statement import reachable in the app | Wired to the pipeline and compiled by CI; never launched by hand on a simulator or device |
+| Archive import reachable in the app | Wired and compiled by CI; never launched by hand, and never run against a real DoorDash archive |
+| ZIP reader tested on real bytes | Yes — generated `.zip` fixtures built with ZIPFoundation inside `swift test` |
+| Oversized / over-entry-count archives rejected | Yes, by test; encryption is detected only as a read failure |
 | Installed on a physical iPhone | **No** — needs an Apple signing identity |
 
 [XcodeGen]: https://github.com/yonaskolb/XcodeGen
