@@ -1,0 +1,51 @@
+name: Freebuff Build Handoff
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freebuff-handoff-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  handoff:
+    name: Record build handoff
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summarize repository update
+        env:
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          EVENT: ${{ github.event_name }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          ADDED: ${{ toJSON(github.event.head_commit.added) }}
+          MODIFIED: ${{ toJSON(github.event.head_commit.modified) }}
+          REMOVED: ${{ toJSON(github.event.head_commit.removed) }}
+        run: |
+          {
+            echo "# Freebuff → Hustler handoff"
+            echo
+            echo "- **Repository:** $REPO"
+            echo "- **Branch:** $BRANCH"
+            echo "- **Event:** $EVENT"
+            echo "- **Pushed by:** $ACTOR"
+            echo "- **Commit:** [${SHA:0:7}](https://github.com/$REPO/commit/$SHA)"
+            echo "- **Commit message:** $COMMIT_MESSAGE"
+            echo
+            echo "## Changed files (push event summary)"
+            echo "- **Added:** $ADDED"
+            echo "- **Modified:** $MODIFIED"
+            echo "- **Removed:** $REMOVED"
+            echo
+            echo "## Next step"
+            echo "Review the commit and test results before preparing or sending another builder prompt."
+            echo "This workflow does not merge changes, deploy, or send prompts to Freebuff."
+          } >> "$GITHUB_STEP_SUMMARY"
