@@ -151,6 +151,7 @@ nav button[hidden]{display:none}
 <section id="settings" hidden>
   <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
   <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Nothing here changes your log or your numbers.</p><div class="row"><button class="btn ghost" id="tstLink">Send a test offer</button><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
+  <div class="card"><h2 style="font-size:17px">Clean up replayed offers</h2><p class="hint">Removes shortcut rows with a negative Slack value (replayed test offers with wrong times) from your master log and your offers inbox. It asks before deleting anything.</p><div class="row"><button class="btn ghost" id="fixReplay">Remove replayed offers</button></div></div>
   <div class="card"><h2 style="font-size:17px">Pages</h2><p class="hint">Tap a bar to open that page. Use its switch to add or remove it from the menu.</p><div id="pgList"></div></div>
 </section>
 <section id="log" hidden>
@@ -667,6 +668,15 @@ async function pullOffers(manual){
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&appReady)pullOffers()});
 $("#pullOffers").onclick=()=>pullOffers(true);
+$("#fixReplay").onclick=async()=>{
+  const neg=l=>/^-\d/.test((String(l).split("|")[11]||"").trim());
+  const lines=logSplit(),bad=lines.filter(neg);let ids=[];
+  try{if(sb&&sbUser){const r=await tmo(sb.from("offers").select("id,row_text"),15000);if(r.error){toast("Could not read offers: "+r.error.message);return}ids=(r.data||[]).filter(o=>neg(o.row_text||"")).map(o=>o.id)}}catch(e){toast("Could not reach your offers");return}
+  if(!bad.length&&!ids.length){toast("Nothing to remove");return}
+  if(!confirm("Remove "+bad.length+" replayed row"+(bad.length===1?"":"s")+" from your log and "+ids.length+" from your offers inbox?"))return;
+  try{if(ids.length){const d=await tmo(sb.from("offers").delete().in("id",ids),15000);if(d.error){toast("Could not delete offers: "+d.error.message);return}}}catch(e){toast("Could not reach your offers");return}
+  await commitLog(masterLog(lines.filter(l=>!neg(l)).join("\n")));
+  toast("Removed "+bad.length+" from log, "+ids.length+" from inbox");document.querySelector('[data-t="dash"]').click()};
 $("#pasteRows").onclick=async()=>{try{await ingest(await navigator.clipboard.readText())}catch(e){toast("Paste blocked")}};
 const PGS=[["log","Master file","View, edit and save the master log"],["data","Data","Drop offers, statements and archive files"],["earn","Earnings","Read your monthly statements"],["hist","History","Load your DoorDash data archive"],["sync","Handoff","Export or import for another AI"]];
 let PIN={};try{PIN=JSON.parse(localStorage.getItem("hh_pins")||"{}")}catch(e){}
