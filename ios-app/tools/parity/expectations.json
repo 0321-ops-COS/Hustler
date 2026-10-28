@@ -1411,5 +1411,315 @@
       "$22.47",
       "$61.03"
     ]
+  },
+  "statements": {
+    "parse": {
+      "canonical": {
+        "k": "2026-10",
+        "total": 1234.56,
+        "n": 123
+      },
+      "no_count": {
+        "k": "2026-11",
+        "total": 88,
+        "n": 0
+      },
+      "missing_total": null,
+      "missing_month": null,
+      "lowercase_month": null,
+      "month_without_year": null,
+      "double_space_month": null,
+      "total_on_next_line": {
+        "k": "2027-01",
+        "total": 1000,
+        "n": 7
+      },
+      "total_one_decimal": null,
+      "total_whole_dollars": null,
+      "december": {
+        "k": "2026-12",
+        "total": 0.99,
+        "n": 0
+      },
+      "large_count": {
+        "k": "2026-10",
+        "total": 10,
+        "n": 10000
+      },
+      "reordered": {
+        "k": "2026-05",
+        "total": 55.55,
+        "n": 9
+      },
+      "trailing_text": {
+        "k": "2026-10",
+        "total": 1234.56,
+        "n": 123
+      },
+      "month_january": {
+        "k": "2026-01",
+        "total": 1,
+        "n": 0
+      },
+      "month_february": {
+        "k": "2026-02",
+        "total": 1,
+        "n": 0
+      },
+      "month_march": {
+        "k": "2026-03",
+        "total": 1,
+        "n": 0
+      },
+      "month_april": {
+        "k": "2026-04",
+        "total": 1,
+        "n": 0
+      },
+      "month_may": {
+        "k": "2026-05",
+        "total": 1,
+        "n": 0
+      },
+      "month_june": {
+        "k": "2026-06",
+        "total": 1,
+        "n": 0
+      },
+      "month_july": {
+        "k": "2026-07",
+        "total": 1,
+        "n": 0
+      },
+      "month_august": {
+        "k": "2026-08",
+        "total": 1,
+        "n": 0
+      },
+      "month_september": {
+        "k": "2026-09",
+        "total": 1,
+        "n": 0
+      },
+      "month_october": {
+        "k": "2026-10",
+        "total": 1,
+        "n": 0
+      },
+      "month_november": {
+        "k": "2026-11",
+        "total": 1,
+        "n": 0
+      },
+      "month_december": {
+        "k": "2026-12",
+        "total": 1,
+        "n": 0
+      }
+    },
+    "allocations": [
+      {
+        "id": "three_rows",
+        "rows": [
+          {
+            "payout": "16.67",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "33.33",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "50.00",
+            "miles": "5.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "miles_split",
+        "rows": [
+          {
+            "payout": "62.63",
+            "miles": "10.0",
+            "changed": true
+          },
+          {
+            "payout": "187.87",
+            "miles": "30.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "no_statement",
+        "rows": [
+          {
+            "payout": "7.00",
+            "miles": "5.0",
+            "changed": false
+          },
+          {
+            "payout": "7.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "b1_shortcut_ignored",
+        "rows": [
+          {
+            "payout": "333.33",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "666.67",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "250.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "tie_remainder",
+        "rows": [
+          {
+            "payout": "33.34",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "33.33",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "33.33",
+            "miles": "5.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "two_months_one_statement",
+        "rows": [
+          {
+            "payout": "100.00",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "7.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "miles_zero",
+        "rows": [
+          {
+            "payout": "12.50",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "37.51",
+            "miles": "5.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "shortcut_only_month",
+        "rows": [
+          {
+            "payout": "12.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "blank_minutes_derived",
+        "rows": [
+          {
+            "payout": "46.90",
+            "miles": "9.4",
+            "changed": true
+          },
+          {
+            "payout": "53.10",
+            "miles": "10.6",
+            "changed": true
+          }
+        ]
+      }
+    ],
+    "store": [
+      {
+        "id": "fresh_two_statements",
+        "statements": [
+          [
+            "2026-10",
+            1234.56,
+            123
+          ],
+          [
+            "2026-12",
+            0.99,
+            0
+          ]
+        ],
+        "monthly": [
+          [
+            "2026-10",
+            1234.56,
+            0
+          ],
+          [
+            "2026-12",
+            0.99,
+            0
+          ]
+        ]
+      },
+      {
+        "id": "reimport_preserves_miles",
+        "statements": [
+          [
+            "2026-10",
+            1234.56,
+            123
+          ]
+        ],
+        "monthly": [
+          [
+            "2026-10",
+            1234.56,
+            42
+          ]
+        ]
+      },
+      {
+        "id": "unreadable_changes_nothing",
+        "statements": [],
+        "monthly": [
+          [
+            "2026-10",
+            50,
+            42
+          ]
+        ]
+      }
+    ]
   }
 }

@@ -350,6 +350,124 @@ result.analytics = {
   tax: parseTds(analyticsHtml.tax, 2).map((r) => r[1])
 };
 
+// ---- Earnings statements: parse, store, reconcile --------------------------
+// `stmParse()` and `adjust()` are executed directly. `takeStm()` is executed too
+// (through its paste path, so no PDF is needed); only its synchronous effects on
+// STM and S.monthly are read, because those are exactly the state the app then
+// persists. This section runs last so the async tail of `takeStm` cannot disturb
+// the captures above.
+const stmTexts = {
+  canonical: 'DoorDash, Inc.\nOctober 2026 Statement\nTotal Payouts $1,234.56\nPayouts (123)',
+  no_count: 'November 2026 Statement Total Payouts $88.00',
+  missing_total: 'October 2026 Statement Payouts (12)',
+  missing_month: 'Total Payouts $10.00 Payouts (3)',
+  lowercase_month: 'october 2026 Statement Total Payouts $10.00',
+  month_without_year: 'October Statement Total Payouts $10.00',
+  double_space_month: 'October  2026 Statement Total Payouts $10.00',
+  total_on_next_line: 'January 2027 Statement\nTotal Payouts\n$1,000.00\nPayouts (7)',
+  total_one_decimal: 'October 2026 Statement Total Payouts $1,234.5',
+  total_whole_dollars: 'October 2026 Statement Total Payouts $1,234',
+  december: 'December 2026 Statement Total Payouts $0.99',
+  large_count: 'October 2026 Statement Total Payouts $10.00 Payouts (10000)',
+  reordered: 'Total Payouts $55.55\nMay 2026 Statement\nPayouts (9)',
+  trailing_text: 'October 2026 Statement\nTotal Payouts $1,234.56\nPayouts (123)\nPage 1 of 3',
+  month_january: 'January 2026 Statement Total Payouts $1.00',
+  month_february: 'February 2026 Statement Total Payouts $1.00',
+  month_march: 'March 2026 Statement Total Payouts $1.00',
+  month_april: 'April 2026 Statement Total Payouts $1.00',
+  month_may: 'May 2026 Statement Total Payouts $1.00',
+  month_june: 'June 2026 Statement Total Payouts $1.00',
+  month_july: 'July 2026 Statement Total Payouts $1.00',
+  month_august: 'August 2026 Statement Total Payouts $1.00',
+  month_september: 'September 2026 Statement Total Payouts $1.00',
+  month_october: 'October 2026 Statement Total Payouts $1.00',
+  month_november: 'November 2026 Statement Total Payouts $1.00',
+  month_december: 'December 2026 Statement Total Payouts $1.00'
+};
+
+const archiveLine = (date, minutes, extras = {}) => '| ' + [
+  date, extras.payout || '7.00', extras.miles || '5.0', '2', '1.40', '', '', '', '',
+  extras.choice || 'Accepted', '', extras.zone || 'Temecula', minutes, 'archive'
+].join(' | ') + ' |';
+const shortcutLine = (date, payout) => '| ' + [
+  date + ' 18:20', payout, '5.0', '2', '1.80', '7.10', '21.30', 'TAKE IT', '89.00',
+  'Accepted', '10'
+].join(' | ') + ' |';
+const statementLog = (rows) => HDR + '\n' + rows.join('\n');
+
+const allocationCases = [
+  { id: 'three_rows', monthly: { '2026-09': [100, 0] }, log: statementLog([
+    archiveLine('2026-09-05 18:00', 10), archiveLine('2026-09-06 12:00', 20),
+    archiveLine('2026-09-07 09:00', 30)
+  ]) },
+  { id: 'miles_split', monthly: { '2026-10': [250.50, 40] }, log: statementLog([
+    archiveLine('2026-10-02 10:00', 15), archiveLine('2026-10-03 11:00', 45)
+  ]) },
+  { id: 'no_statement', monthly: {}, log: statementLog([
+    archiveLine('2026-09-05 18:00', 10), archiveLine('2026-09-06 12:00', 20)
+  ]) },
+  // B1: the month's full statement total is allocated to archive rows only. The
+  // accepted shortcut row in the same month keeps its own pay, so the summed
+  // month gross exceeds the statement.
+  { id: 'b1_shortcut_ignored', monthly: { '2026-09': [1000, 0] }, log: statementLog([
+    archiveLine('2026-09-05 18:00', 10), archiveLine('2026-09-06 12:00', 20),
+    shortcutLine('2026-09-06', '250.00')
+  ]) },
+  { id: 'tie_remainder', monthly: { '2026-09': [100, 0] }, log: statementLog([
+    archiveLine('2026-09-05 18:00', 20), archiveLine('2026-09-06 12:00', 20),
+    archiveLine('2026-09-07 09:00', 20)
+  ]) },
+  { id: 'two_months_one_statement', monthly: { '2026-09': [100, 0] }, log: statementLog([
+    archiveLine('2026-09-05 18:00', 10), archiveLine('2026-10-03 11:00', 30)
+  ]) },
+  { id: 'miles_zero', monthly: { '2026-09': [50.01, 0] }, log: statementLog([
+    archiveLine('2026-09-05 18:00', 10), archiveLine('2026-09-06 12:00', 30)
+  ]) },
+  { id: 'shortcut_only_month', monthly: { '2026-09': [100, 0] }, log: statementLog([
+    shortcutLine('2026-09-06', '12.00')
+  ]) },
+  { id: 'blank_minutes_derived', monthly: { '2026-09': [100, 20] }, log: statementLog([
+    archiveLine('2026-09-05 18:00', ''), archiveLine('2026-09-06 12:00', 30)
+  ]) }
+];
+
+const storeCases = [
+  { id: 'fresh_two_statements', seed: {}, texts: [stmTexts.canonical, stmTexts.december] },
+  { id: 'reimport_preserves_miles', seed: { '2026-10': [50, 42] }, texts: [stmTexts.canonical] },
+  { id: 'unreadable_changes_nothing', seed: { '2026-10': [50, 42] }, texts: ['not a statement'] }
+];
+
+sandbox.__stm = { texts: stmTexts, allocations: allocationCases, store: storeCases };
+
+result.statements = vm.runInContext(`(() => {
+  const out = { parse: {}, allocations: [], store: [] };
+  for (const [id, text] of Object.entries(__stm.texts)) out.parse[id] = stmParse(text);
+  for (const c of __stm.allocations) {
+    S.monthly = c.monthly;
+    const before = parse(c.log);
+    const after = adjust(before);
+    out.allocations.push({
+      id: c.id,
+      rows: after.map((r, i) => ({
+        payout: r.payout,
+        miles: r.miles,
+        changed: r.payout !== before[i].payout || r.miles !== before[i].miles
+      }))
+    });
+  }
+  for (const c of __stm.store) {
+    STM = {};
+    S.monthly = JSON.parse(JSON.stringify(c.seed));
+    for (const text of c.texts) { try { takeStm([text], true); } catch (e) {} }
+    out.store.push({
+      id: c.id,
+      statements: Object.entries(STM).sort().map(([k, s]) => [k, s.total, s.n]),
+      monthly: Object.entries(S.monthly).sort().map(([k, v]) => [k, v[0], v[1]])
+    });
+  }
+  return out;
+})()`, sandbox);
+
 function diff(expected, actual, path = '', out = []) {
   if (out.length >= 60) return out;
   const bothArrays = Array.isArray(expected) && Array.isArray(actual);

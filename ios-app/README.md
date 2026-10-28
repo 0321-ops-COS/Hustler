@@ -1,17 +1,18 @@
 # ios-app — Hustler native foundation
 
-**Status: Milestone 3.** Verdicts, acceptance rates, master-log parsing, the
-Scoreboard totals, calendar bucketing, the decline float, and the zone / hour /
-month / tax breakdowns are ported into `HustlerCore` with regression tests
-pinned to observed web-app behaviour. There is still **no UI feature port**, no
-archive import, no ZIPFoundation, no persistence, no Supabase/backend, and no
-signing.
+**Status: Milestone 4 (B1).** Verdicts, acceptance rates, master-log parsing, the
+Scoreboard totals, calendar bucketing, the decline float, the zone / hour /
+month / tax breakdowns, and monthly statement import + reconciliation are ported
+into `HustlerCore` with regression tests pinned to observed web-app behaviour.
+There is still **no UI feature port**, no archive import, no ZIPFoundation, no
+persistence, no Supabase/backend, and no signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
   is not committed.
-- `HustlerCore` is a dependency-free SwiftPM library: Foundation only, no UI, no
-  file system, no clock, no network.
+- `HustlerCore` is a dependency-free SwiftPM library: Foundation only, plus
+  PDFKit for page-one statement text where that framework exists. No UI, no file
+  system, no clock, no network.
 
 ## What is ported
 
@@ -27,6 +28,9 @@ signing.
 | Decline float: declines left, declined in the last 100, the four message states | `DeclineFloat` | `renderFloat()` |
 | Zone, hour and month breakdowns (orders, net $/hr, net $/mi, miles, mileage deduction) | `Analytics.zones`, `Analytics.hours`, `Analytics.months` | `analyze()` |
 | Tax estimate: gross, business miles, mileage deduction, taxable | `Analytics.taxEstimate`, `TaxEstimate` | `analyze()` |
+| Statement parsing, the statement store and the `settings.monthly` write-through | `StatementParser`, `EarningsStatement`, `StatementBook`, `StatementMonth` | `stmParse()`, `takeStm()` |
+| Page-one PDF text (PDFKit, no OCR) and the paste path | `StatementPDFText`, `StatementParser` | `pdfText()` |
+| Statement allocation by minutes in whole cents, mileage split | `StatementReconciler` | `adjust()` |
 
 Two populations are kept apart on purpose, because the web app measures them
 differently: **money, miles and hours** cover accepted rows only, while
@@ -39,13 +43,41 @@ advice and not a filing calculation. Its existing assumptions are carried over
 unchanged: miles come from accepted rows only, the rate is a single flat
 dollars-per-mile setting (`taxRate`, default 0.70 in the app's `DEF`) rather than
 the current IRS rate, and no other expenses, self-employment tax, brackets or
-credits are modelled. Statement reconciliation (**B1**) is not involved.
+credits are modelled. Reconciliation below rewrites archive payouts in each
+statement month, which those totals then include.
+
+### Statements and B1
+
+Statement text comes from page one of a PDF (`StatementPDFText`, PDFKit, no OCR)
+or from pasted text; both feed `StatementParser`, which keeps the web app's three
+regular expressions unchanged. Parsed months go into `StatementBook`, which also
+writes the web app's `settings.monthly` map (`month → [total, miles]`): it keeps
+an existing miles figure on re-import and writes nothing at all when no text
+parses (the caller then offers the paste box).
+
+`StatementReconciler.allocate` is `adjust()` ported exactly. Each statement
+month's total is spread over that month's **archive** rows in whole cents by
+minutes, with a largest-remainder pass so the parts add up to the statement total
+exactly; ties stay in log order, as JavaScript's stable sort does. Miles are
+re-split by the same proportions only when the statement carries a mileage
+figure. `Net` and `Hourly` cells are left alone, so the scoreboard recomputes net
+from the adjusted payout.
+
+**B1 is ported as it exists in the web app, not fixed.** Only archive rows are
+re-priced, so logged shortcut pay in the same month is added on top of the
+statement total: statement $1,000 + shortcut $250 → $1,250 of month gross. There
+is no subtraction of shortcut pay and no clamp; `StatementReconcilerTests` pins
+that with a characterization test (`b1_shortcut_ignored`). Any fix is a separate,
+approved change with before/after numbers.
+
+All of this is in memory and local only: no network, no file store, no statement
+data leaving the device.
 
 ## What is deliberately NOT ported yet
 
-Monthly statement reconciliation (where **B1** lives), quests, the California
-pay guarantee, archive/ZIP import, PDF parsing, persistence, handoff, deep
-links, and every screen beyond the M0 shell.
+Quests, the California pay guarantee, archive/ZIP import, persistence, handoff,
+deep links, and every screen beyond the M0 shell. No UI consumes the statement
+pipeline yet.
 
 The period *slicing* the Scoreboard does around "now" (last 10 days, 8 weeks,
 12 months) and the insertion of an empty current period are presentation and
@@ -98,9 +130,10 @@ its formulas.
 `drift.mjs` then checks the native side: `VerdictCase`, `PeriodCase`,
 `StatCase`, `PeriodTotalsCase` and `FloatCase` rows are compared field by field
 and the id/key sets must match exactly; the zone, hour, month and tax tables are
-compared as ordered sequences, so their sort order is part of the expectation. A placeholder bucket that `renderGame`
-inserts for a period with no takings has no native equivalent and is skipped
-(`taken === 0` identifies it).
+compared as ordered sequences, so their sort order is part of the expectation;
+statement parse results, allocation arrays and import snapshots are compared by
+id and field. A placeholder bucket that `renderGame` inserts for a period with no
+takings has no native equivalent and is skipped (`taken === 0` identifies it).
 
 **Stated limits.** `drift.mjs` cannot prove that the hand-maintained fixture text
 in `Fixtures.swift` is identical to the copy inside `oracle.mjs`, and it cannot

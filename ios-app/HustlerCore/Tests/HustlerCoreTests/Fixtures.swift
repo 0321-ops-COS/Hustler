@@ -88,4 +88,54 @@ enum Fixtures {
         analyticsMurrieta, analyticsDeclined, analyticsNoZone, analyticsMenifee,
         analyticsMidnight, analyticsNoon, analyticsNoTime, analyticsArchive
     ].joined(separator: "\n")
+
+    // MARK: - Earnings statements (B1)
+
+    // Statement texts identical to `stmTexts` in oracle.mjs. Synthetic only; no
+    // real statement text or earnings figure appears here.
+    static let statementCanonical = "DoorDash, Inc.\nOctober 2026 Statement\nTotal Payouts $1,234.56\nPayouts (123)"
+    static let statementNoCount = "November 2026 Statement Total Payouts $88.00"
+    static let statementMissingTotal = "October 2026 Statement Payouts (12)"
+    static let statementMissingMonth = "Total Payouts $10.00 Payouts (3)"
+    static let statementLowercaseMonth = "october 2026 Statement Total Payouts $10.00"
+    static let statementMonthWithoutYear = "October Statement Total Payouts $10.00"
+    static let statementDoubleSpaceMonth = "October  2026 Statement Total Payouts $10.00"
+    static let statementTotalOnNextLine = "January 2027 Statement\nTotal Payouts\n$1,000.00\nPayouts (7)"
+    static let statementTotalOneDecimal = "October 2026 Statement Total Payouts $1,234.5"
+    static let statementTotalWholeDollars = "October 2026 Statement Total Payouts $1,234"
+    static let statementDecember = "December 2026 Statement Total Payouts $0.99"
+    static let statementLargeCount = "October 2026 Statement Total Payouts $10.00 Payouts (10000)"
+    static let statementReordered = "Total Payouts $55.55\nMay 2026 Statement\nPayouts (9)"
+    static let statementTrailingText = "October 2026 Statement\nTotal Payouts $1,234.56\nPayouts (123)\nPage 1 of 3"
+
+    /// One synthetic statement per month name, to pin the name order and the
+    /// zero padding of the month key.
+    static func statementMonth(_ name: String) -> String {
+        "\(name) 2026 Statement Total Payouts $1.00"
+    }
+
+    /// The oracle's `archiveLine()` helper, kept identical so the reconciliation
+    /// fixtures describe the same rows on both sides.
+    static func archiveLine(
+        _ date: String,
+        minutes: String,
+        payout: String = "7.00",
+        miles: String = "5.0",
+        choice: String = "Accepted",
+        zone: String = "Temecula"
+    ) -> String {
+        "| " + [date, payout, miles, "2", "1.40", "", "", "", "", choice, "", zone, minutes, "archive"]
+            .joined(separator: " | ") + " |"
+    }
+
+    /// The oracle's `shortcutLine()` helper.
+    static func shortcutLine(_ date: String, payout: String) -> String {
+        "| " + [date + " 18:20", payout, "5.0", "2", "1.80", "7.10", "21.30", "TAKE IT", "89.00",
+                "Accepted", "10"]
+            .joined(separator: " | ") + " |"
+    }
+
+    static func statementLog(_ rows: [String]) -> String {
+        headerLiteral + "\n" + rows.joined(separator: "\n")
+    }
 }

@@ -343,6 +343,116 @@ if (!taxCase) {
 
 notes.push(`analytics: ${zoneCases.length} zones, ${hourCases.length} hours, ${monthCases.length} months, ${taxCase ? 1 : 0} tax panel`);
 
+// ---- 9. Earnings statements ------------------------------------------------
+const statementTests = read(`${TESTS}/StatementParserTests.swift`);
+const allocationTests = read(`${TESTS}/StatementReconcilerTests.swift`);
+
+const parsedAsserted = new Map();
+for (const match of statementTests.matchAll(
+  /StatementParseCase\(id: "(\w+)", text: Fixtures\.\w+(?:\("[^"]*"\))?, month: "([^"]*)", total: (-?[\d.]+), payouts: (\d+)\)/g
+)) {
+  parsedAsserted.set(match[1], { month: match[2], total: Number(match[3]), payouts: Number(match[4]) });
+}
+const nilAsserted = new Set();
+for (const match of statementTests.matchAll(
+  /StatementNilCase\(id: "(\w+)", text: Fixtures\.\w+\)/g
+)) {
+  nilAsserted.add(match[1]);
+}
+
+for (const [id, expected] of Object.entries(expectations.statements.parse)) {
+  if (expected === null) {
+    if (!nilAsserted.has(id)) failures.push(`statement "${id}" does not parse in the oracle but no StatementNilCase asserts that`);
+    if (parsedAsserted.has(id)) failures.push(`statement "${id}" is asserted as parseable but the oracle rejects it`);
+    continue;
+  }
+  const actual = parsedAsserted.get(id);
+  if (!actual) {
+    failures.push(`statement "${id}" is in expectations.json but no StatementParseCase asserts it`);
+    continue;
+  }
+  if (actual.month !== expected.k) failures.push(`statement "${id}".month: Swift ${JSON.stringify(actual.month)}, oracle ${JSON.stringify(expected.k)}`);
+  if (Math.abs(actual.total - expected.total) > 1e-9) failures.push(`statement "${id}".total: Swift ${actual.total}, oracle ${expected.total}`);
+  if (actual.payouts !== expected.n) failures.push(`statement "${id}".payouts: Swift ${actual.payouts}, oracle ${expected.n}`);
+}
+for (const id of parsedAsserted.keys()) {
+  if (!expectations.statements.parse[id]) failures.push(`statement "${id}" is asserted in Swift but absent from expectations.json`);
+}
+for (const id of nilAsserted) {
+  if (expectations.statements.parse[id] !== null) failures.push(`statement "${id}" is asserted as unparseable but the oracle parses it`);
+}
+notes.push(`statements: ${parsedAsserted.size} parsed, ${nilAsserted.size} rejected cases asserted`);
+
+const quoted = (text) => [...text.matchAll(/"([^"]*)"/g)].map((match) => match[1]);
+
+const allocationAsserted = new Map();
+for (const match of allocationTests.matchAll(
+  /StatementCase\(\s*id: "(\w+)",[\s\S]*?payouts: \[([^\]]*)\],\s*miles: \[([^\]]*)\]\s*\)/g
+)) {
+  allocationAsserted.set(match[1], { payouts: quoted(match[2]), miles: quoted(match[3]) });
+}
+
+for (const expected of expectations.statements.allocations) {
+  const actual = allocationAsserted.get(expected.id);
+  if (!actual) {
+    failures.push(`statement allocation "${expected.id}" is in expectations.json but no StatementCase asserts it`);
+    continue;
+  }
+  compareSequence(
+    `statement "${expected.id}" payouts`,
+    actual.payouts.map((payout) => ({ value: payout })),
+    expected.rows.map((row) => ({ value: row.payout })),
+    ['value']
+  );
+  compareSequence(
+    `statement "${expected.id}" miles`,
+    actual.miles.map((miles) => ({ value: miles })),
+    expected.rows.map((row) => ({ value: row.miles })),
+    ['value']
+  );
+}
+for (const id of allocationAsserted.keys()) {
+  if (!expectations.statements.allocations.some((c) => c.id === id)) {
+    failures.push(`statement allocation "${id}" is asserted in Swift but absent from expectations.json`);
+  }
+}
+notes.push(`statement allocations: ${allocationAsserted.size} fixtures asserted`);
+
+const storeAsserted = new Map();
+for (const match of statementTests.matchAll(
+  /StoreCase\(id: "(\w+)",[\s\S]*?statements: \[([^\]]*)\],\s*monthly: \[([^\]]*)\]\)/g
+)) {
+  storeAsserted.set(match[1], { statements: quoted(match[2]), monthly: quoted(match[3]) });
+}
+
+for (const expected of expectations.statements.store) {
+  const actual = storeAsserted.get(expected.id);
+  if (!actual) {
+    failures.push(`statement store "${expected.id}" is in expectations.json but no StoreCase asserts it`);
+    continue;
+  }
+  const statements = expected.statements.map(([k, total, n]) => `${k}:${Math.round(total * 100)}:${n}`);
+  const monthly = expected.monthly.map(([k, total, miles]) => `${k}:${Math.round(total * 100)}:${miles}`);
+  compareSequence(
+    `statement store "${expected.id}" statements`,
+    actual.statements.map((value) => ({ value })),
+    statements.map((value) => ({ value })),
+    ['value']
+  );
+  compareSequence(
+    `statement store "${expected.id}" monthly`,
+    actual.monthly.map((value) => ({ value })),
+    monthly.map((value) => ({ value })),
+    ['value']
+  );
+}
+for (const id of storeAsserted.keys()) {
+  if (!expectations.statements.store.some((c) => c.id === id)) {
+    failures.push(`statement store "${id}" is asserted in Swift but absent from expectations.json`);
+  }
+}
+notes.push(`statement store: ${storeAsserted.size} fixtures asserted`);
+
 // ---- Report ----------------------------------------------------------------
 for (const note of notes) console.log(`  ok: ${note}`);
 
