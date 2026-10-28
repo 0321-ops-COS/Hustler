@@ -627,7 +627,13 @@ function masterLog(text){const seen=new Set(),out=[];
   const k=l.replace(/\s+/g," ").replace(/\s*\|\s*/g,"|");if(seen.has(k))continue;seen.add(k);out.push(l)}
  return HDRM+(out.length?"\n"+out.join("\n"):"")}
 const logRows=t=>Math.max(0,t.split("\n").length-2);
-async function commitLog(out){$("#csv").value=out;scLoad();isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
+// Same rule as dedupeArch, applied to the saved master log text so the stored copy loses the duplicate archive rows too.
+function dedupeLog(csv){const L=masterLog(csv).split("\n"),rs=L.slice(2);if(!rs.length)return L.join("\n");
+ const P=parse(HDRM+"\n"+rs.join("\n"));if(P.length!==rs.length)return L.join("\n");
+ const need={},key=r=>(r.date||"").slice(0,10)+"|"+num(r.items);
+ P.forEach(r=>{if(r.src!=="archive"&&took(r.choice))need[key(r)]=(need[key(r)]||0)+1});
+ return L.slice(0,2).concat(rs.filter((l,i)=>{const r=P[i];if(r.src!=="archive")return true;const k=key(r);if(need[k]>0){need[k]--;return false}return true})).join("\n")}
+async function commitLog(out){out=dedupeLog(out);$("#csv").value=out;scLoad();isDemo=false;analyze(parse(out));return put("log",{csv:out,v:1})}
 async function addRow(l){const cur=masterLog($("#csv").value),out=masterLog(cur+"\n"+l);if(out===cur){toast("Already logged");return}await commitLog(out);toast("Offer logged")}
 
 // delete data: per type or everything, from browser and account
@@ -729,7 +735,7 @@ window.addEventListener("hashchange",()=>{
   drawFields();renderGame([],[]);renderMaster();
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=dedupeLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
   await pullOffers();
