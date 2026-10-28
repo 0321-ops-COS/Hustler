@@ -23,6 +23,7 @@ const ACCEPTANCE_TESTS = `${TESTS}/AcceptanceLogicTests.swift`;
 const PERIOD_TESTS = `${TESTS}/PeriodGroupingTests.swift`;
 const SCOREBOARD_TESTS = `${TESTS}/ScoreboardTests.swift`;
 const FLOAT_TESTS = `${TESTS}/DeclineFloatTests.swift`;
+const ANALYTICS_TESTS = `${TESTS}/AnalyticsTests.swift`;
 
 // `renderGame` always inserts the current period even when it has no rows, so a
 // placeholder bucket can appear with zero takings. Those have no native
@@ -47,6 +48,7 @@ const acceptanceSource = read(ACCEPTANCE_TESTS);
 const periodSource = read(PERIOD_TESTS);
 const scoreboardSource = read(SCOREBOARD_TESTS);
 const floatSource = read(FLOAT_TESTS);
+const analyticsSource = read(ANALYTICS_TESTS);
 
 // ---- 1. Verdict table: strict field comparison ------------------------------
 const casePattern = new RegExp(
@@ -264,6 +266,82 @@ for (const [key, expected] of expectedFloat) {
   if (actual.message !== expected.message) failures.push(`float "${key}".message: Swift ${JSON.stringify(actual.message)}, oracle ${JSON.stringify(expected.message)}`);
 }
 notes.push(`decline float: ${floatCases.size} cases asserted vs ${expectedFloat.size} oracle cases`);
+
+// ---- 8. Zone / hour / month / tax breakdowns -------------------------------
+// These are ordered lists, so position is part of the expectation.
+function collect(source, pattern, fields) {
+  const out = [];
+  for (const match of source.matchAll(pattern)) {
+    const row = {};
+    fields.forEach((field, index) => { row[field] = match[index + 1]; });
+    out.push(row);
+  }
+  return out;
+}
+
+const zoneCases = collect(
+  analyticsSource,
+  /ZoneCase\(zone: "([^"]*)", orders: (\d+), netPerHour: "([^"]*)", netPerMile: "([^"]*)"\)/g,
+  ['zone', 'orders', 'netPerHour', 'netPerMile']
+);
+const hourCases = collect(
+  analyticsSource,
+  /HourCase\(hour: (-?\d+), label: "([^"]*)", orders: (\d+), netPerHour: "([^"]*)"\)/g,
+  ['hour', 'label', 'orders', 'netPerHour']
+);
+const monthCases = collect(
+  analyticsSource,
+  /MonthCase\(month: "([^"]*)", orders: (\d+), gross: "([^"]*)", miles: "([^"]*)", net: "([^"]*)", mileage: "([^"]*)"\)/g,
+  ['month', 'orders', 'gross', 'miles', 'net', 'mileage']
+);
+const taxCase = collect(
+  analyticsSource,
+  /TaxCase\(gross: "([^"]*)", miles: "([^"]*)", deduction: "([^"]*)", taxable: "([^"]*)"\)/g,
+  ['gross', 'miles', 'deduction', 'taxable']
+)[0];
+
+const analytics = expectations.analytics;
+
+function compareSequence(name, asserted, expected, fields) {
+  if (asserted.length !== expected.length) {
+    failures.push(`${name}: Swift asserts ${asserted.length} rows, oracle has ${expected.length}`);
+  }
+  for (let i = 0; i < Math.min(asserted.length, expected.length); i += 1) {
+    for (const field of fields) {
+      const left = asserted[i][field];
+      const right = expected[i][field];
+      const same = typeof right === 'number' ? Number(left) === right : left === right;
+      if (!same) {
+        failures.push(`${name}[${i}].${field}: Swift asserts ${JSON.stringify(left)}, oracle says ${JSON.stringify(right)}`);
+      }
+    }
+  }
+}
+
+compareSequence('zones', zoneCases, analytics.zones.map((r) => ({
+  zone: r[0], orders: r[1], netPerHour: r[2], netPerMile: r[3]
+})), ['zone', 'orders', 'netPerHour', 'netPerMile']);
+
+compareSequence('hours', hourCases, analytics.hours.map((r) => ({
+  label: r[0], orders: r[1], netPerHour: r[2]
+})), ['label', 'orders', 'netPerHour']);
+
+compareSequence('months', monthCases, analytics.months.map((r) => ({
+  month: r[0], orders: r[1], gross: r[2], miles: r[3], net: r[4], mileage: r[5]
+})), ['month', 'orders', 'gross', 'miles', 'net', 'mileage']);
+
+if (!taxCase) {
+  failures.push('no TaxCase is asserted for the tax panel');
+} else {
+  const expectedTax = { gross: analytics.tax[0], miles: analytics.tax[1], deduction: analytics.tax[2], taxable: analytics.tax[3] };
+  for (const field of ['gross', 'miles', 'deduction', 'taxable']) {
+    if (taxCase[field] !== expectedTax[field]) {
+      failures.push(`tax.${field}: Swift asserts ${JSON.stringify(taxCase[field])}, oracle says ${JSON.stringify(expectedTax[field])}`);
+    }
+  }
+}
+
+notes.push(`analytics: ${zoneCases.length} zones, ${hourCases.length} hours, ${monthCases.length} months, ${taxCase ? 1 : 0} tax panel`);
 
 // ---- Report ----------------------------------------------------------------
 for (const note of notes) console.log(`  ok: ${note}`);

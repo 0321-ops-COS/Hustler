@@ -254,6 +254,42 @@ const rendered = vm.runInContext(`(() => {
   return out;
 })()`, sandbox);
 
+// ---- Zone / hour / month / tax breakdowns ----------------------------------
+// These four tables are rendered inside `analyze()`, so the same clock-stubbed
+// pass that captured the Scoreboard captures them. The fixture deliberately
+// mixes zones (including an empty one), hours (including midnight, noon and a
+// row with no time at all) and three months.
+const analyticsText = HDR + '\n' + [
+  '| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | 80.00 | Accept | 15.25 | Murrieta | 45 |',
+  '| 2026-10-27 15:10 | 4.25 | 6.2 | 2 | 0.69 | -0.31 | -1.20 | SKIP | 89.00 | Declined | 0 |',
+  '| 2026-10-26 09:00 | 12.00 | 4.0 | 3 | 3.00 | 9.06 | 27.18 | TAKE IT | 91.00 | Accept | 10 |',
+  '| 2026-09-30 12:00 | 10.00 | 4.0 | 1 | 2.50 | 7.66 | 30.64 | TAKE IT | 88.00 | Accept | 5 | Menifee | 15 |',
+  '| 2026-11-02 00:30 | 8.00 | 3.0 | 2 | 2.67 | 6.66 | 20.00 | TAKE IT | 89.00 | Accept | 0 |  | 25 |',
+  '| 2026-11-02 12:40 | 9.00 | 5.0 | 2 | 1.80 | 7.66 | 23.00 | TAKE IT | 89.00 | Accept | 0 | Temecula | 25 |',
+  '| 2026-10-20 | 11.00 | 2.0 | 1 | 5.50 | 10.00 | 30.00 | TAKE IT | 89 | Accept | 0 |  | 20 |',
+  '| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 |  |  |  |  | Accepted |  | Temecula | 30 | archive |'
+].join('\n');
+
+sandbox.__an = { text: analyticsText };
+const analyticsHtml = vm.runInContext(`(() => {
+  analyze(parse(__an.text));
+  return {
+    zones: ($('#zones') || {}).innerHTML || '',
+    hours: ($('#hours') || {}).innerHTML || '',
+    months: ($('#months') || {}).innerHTML || '',
+    tax: ($('#tax') || {}).innerHTML || ''
+  };
+})()`, sandbox);
+
+function parseTds(html, width) {
+  const cell = '<td>([^<]*)<\\/td>';
+  const re = new RegExp('<tr>' + cell.repeat(width) + '<\\/tr>', 'g');
+  const out = [];
+  let match;
+  while ((match = re.exec(html)) !== null) out.push(match.slice(1, width + 1));
+  return out;
+}
+
 function parseStats(html) {
   const out = [];
   const re = /<div class="num[^"]*">([^<]*)<\/div><span>([^<]*)<\/span>/g;
@@ -306,6 +342,13 @@ for (const name of Object.keys(rendered.periods)) {
   }
 }
 result.float = rendered.float.map((c) => Object.assign({ rate: c.rate, target: c.target }, parseFloatPanel(c.html)));
+result.analytics = {
+  zones: parseTds(analyticsHtml.zones, 4).map((r) => [r[0], Number(r[1]), r[2], r[3]]),
+  hours: parseTds(analyticsHtml.hours, 3).map((r) => [r[0], Number(r[1]), r[2]]),
+  months: parseTds(analyticsHtml.months, 6).map((r) => [r[0], Number(r[1]), r[2], r[3], r[4], r[5]]),
+  // The mileage row's label embeds the rate, so values are read positionally.
+  tax: parseTds(analyticsHtml.tax, 2).map((r) => r[1])
+};
 
 function diff(expected, actual, path = '', out = []) {
   if (out.length >= 60) return out;

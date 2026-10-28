@@ -1,10 +1,11 @@
 # ios-app — Hustler native foundation
 
-**Status: Milestone 2.** Verdicts, acceptance rates, master-log parsing, the
-Scoreboard totals, calendar bucketing and the decline float are ported into
-`HustlerCore` with regression tests pinned to observed web-app behaviour. There
-is still **no UI feature port**, no archive import, no ZIPFoundation, no
-persistence, no Supabase/backend, and no signing.
+**Status: Milestone 3.** Verdicts, acceptance rates, master-log parsing, the
+Scoreboard totals, calendar bucketing, the decline float, and the zone / hour /
+month / tax breakdowns are ported into `HustlerCore` with regression tests
+pinned to observed web-app behaviour. There is still **no UI feature port**, no
+archive import, no ZIPFoundation, no persistence, no Supabase/backend, and no
+signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
@@ -24,16 +25,27 @@ persistence, no Supabase/backend, and no signing.
 | Scoreboard tiles: gross, net, net $/hr, net $/mile, offers, miles, hours, acceptance, followed-verdict | `Scoreboard`, `ScoreboardTotals` | `analyze()` |
 | Day / week / month / year buckets (weeks start Monday) and per-period totals | `PeriodGrouping`, `PeriodTotals` | `keyOf()`, `renderGame()` |
 | Decline float: declines left, declined in the last 100, the four message states | `DeclineFloat` | `renderFloat()` |
+| Zone, hour and month breakdowns (orders, net $/hr, net $/mi, miles, mileage deduction) | `Analytics.zones`, `Analytics.hours`, `Analytics.months` | `analyze()` |
+| Tax estimate: gross, business miles, mileage deduction, taxable | `Analytics.taxEstimate`, `TaxEstimate` | `analyze()` |
 
 Two populations are kept apart on purpose, because the web app measures them
 differently: **money, miles and hours** cover accepted rows only, while
 **acceptance** and the followed-verdict percentage cover non-archive rows only.
 
+### Tax estimate
+
+The tax panel is a **flat mileage deduction estimate from your own log**, not tax
+advice and not a filing calculation. Its existing assumptions are carried over
+unchanged: miles come from accepted rows only, the rate is a single flat
+dollars-per-mile setting (`taxRate`, default 0.70 in the app's `DEF`) rather than
+the current IRS rate, and no other expenses, self-employment tax, brackets or
+credits are modelled. Statement reconciliation (**B1**) is not involved.
+
 ## What is deliberately NOT ported yet
 
 Monthly statement reconciliation (where **B1** lives), quests, the California
-pay guarantee, history analytics, archive/ZIP import, PDF parsing, persistence,
-handoff, deep links, and every screen beyond the M0 shell.
+pay guarantee, archive/ZIP import, PDF parsing, persistence, handoff, deep
+links, and every screen beyond the M0 shell.
 
 The period *slicing* the Scoreboard does around "now" (last 10 days, 8 weeks,
 12 months) and the insertion of an empty current period are presentation and
@@ -85,7 +97,8 @@ its formulas.
 
 `drift.mjs` then checks the native side: `VerdictCase`, `PeriodCase`,
 `StatCase`, `PeriodTotalsCase` and `FloatCase` rows are compared field by field
-and the id/key sets must match exactly. A placeholder bucket that `renderGame`
+and the id/key sets must match exactly; the zone, hour, month and tax tables are
+compared as ordered sequences, so their sort order is part of the expectation. A placeholder bucket that `renderGame`
 inserts for a period with no takings has no native equivalent and is skipped
 (`taken === 0` identifies it).
 
