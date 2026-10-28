@@ -195,6 +195,45 @@ final class ArchiveImportTests: XCTestCase {
         }
     }
 
+    /// ZIPFoundation can write archives but not encrypted ones, so this is a
+    /// checked-in 701-byte `zip -e` archive holding synthetic delivery rows. It
+    /// opens fine and lists zero entries, which used to be indistinguishable
+    /// from "the delivery file is missing".
+    private static let encryptedArchiveBase64 =
+        "UEsDBBQACQAIAFmmXF2u5ybC5wEAALAFAAAYABwAZGVsaXZlcnlfaW5mb3JtYXRpb24uY3N2VVQJAAMpYOJqKWDianV4CwABBDA/5gwE6QMAAF4QG9hCUaGbUBBetoV/9KD7JHNOAg8NyV4iOyatBUUSAY6FuEEo5cgjBHEniZUD9voBo5f+pVcFD7Ljuq23LB5wKZXMA4/F7B3L9e3npKAMs+WRKRqT5AgfzD2dFhS8NcgA1CevNhzL8UnNgvAmAhCGNnYRnvRj+qwHMap08PA8W0shPg5XhNC8KMBtK07aet9Pq0RB8wTrjgn5wnDN5mWFwlsriMRBkl6cV+DvvxB3hzSMvytSfPO28rbDvGLPEIkzp4MIcr9ztKdk97SAXnGD61vKk5JbcmN2UHuMvgyn8Ne5Sc3L6Q2+QKh6SQ8ibvkgZy25pzmcEY3NoXQM/LLRky8VW/ctaL0cww+aGBA9s85GwDJMxMAFYKKBOLxhIkTB6ylHg71iEiDWQfKhquAD/vLgk2Ide84Dj1uruv/4foNtLKZvssTEguNaBYdInA39bmwAk5GxbdFp0bGLla31QBAyyn69SIQ/jnZ9X9aDi9NqNibemwELLlWsxjkrflOScxsNZl7Jjn3N+TVzsQ+V0fKL3yuZFGAU+lHynyeBPYK9bDystuLrhsWS0Lfsjb1SRQ5z6BsO8j2q/+00ZLZBf90/WX2xdDBHMvLMfI6scA/XsODV52q78kdEX9R2b0w0iEmeAilQSwcIrucmwucBAACwBQAAUEsBAh4DFAAJAAgAWaZcXa7nJsLnAQAAsAUAABgAGAAAAAAAAQAAAKSBAAAAAGRlbGl2ZXJ5X2luZm9ybWF0aW9uLmNzdlVUBQADKWDianV4CwABBDA/5gwE6QMAAFBLBQYAAAAAAQABAF4AAABJAgAAAAA="
+
+    func testEncryptedArchiveIsReportedAsUnreadableNotMissing() throws {
+        guard let data = Data(base64Encoded: Self.encryptedArchiveBase64) else {
+            return XCTFail("the embedded encrypted fixture is not valid base64")
+        }
+
+        XCTAssertThrowsError(try importArchive(data, existing: Fixtures.twoRows)) { error in
+            guard let archiveError = error as? ArchiveImportError else {
+                return XCTFail("expected an ArchiveImportError, got \(error)")
+            }
+            guard case .unreadableArchive = archiveError else {
+                return XCTFail("expected unreadableArchive, got \(archiveError)")
+            }
+            XCTAssertFalse(
+                archiveError.localizedDescription.contains("delivery_information.csv"),
+                "an encrypted archive must not be reported as a missing delivery file"
+            )
+        }
+    }
+
+    func testArchiveWithEntriesButNoDeliveryFileIsStillMissing() throws {
+        // The zero-entry rule must not swallow the ordinary wrong-file case: this
+        // archive lists entries and genuinely has no delivery file in it.
+        let data = try zip([
+            ("data_archive/", ""),
+            ("data_archive/personal_information.csv", "a,b\n1,2\n")
+        ])
+
+        XCTAssertThrowsError(try importArchive(data)) { error in
+            XCTAssertEqual(error as? ArchiveImportError, .deliveryFileMissing)
+        }
+    }
+
     func testMissingRequiredColumnsIsReported() throws {
         let header = "ORDER_CREATED_TIME,ACTUAL_PICKUP_TIME,STORE_NAME,TOTAL_ITEM_COUNT"
         let data = try zip([("delivery_information.csv", csv([

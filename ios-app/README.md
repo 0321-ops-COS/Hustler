@@ -169,9 +169,11 @@ the only target that links a third-party library.
   previous export is removed. This is a deliberate, approved divergence from the
   web app's `toLog()`, which deletes every archive row and rebuilds them.
 - **Limits.** 64 MiB archive, 1,000 entries, 32 MiB delivery file, all checked
-  before extraction. Encrypted archives are rejected as an unreadable member
-  because ZIPFoundation exposes no public encryption flag, so the message names
-  both encryption and corruption rather than guessing.
+  before extraction. A `zip -e` encrypted archive opens as an `Archive` but
+  lists **zero** entries, so zero iterated entries are refused as unreadable
+  (encrypted or damaged) rather than reported as a missing delivery file. There
+  is no public encryption flag to inspect, so the message names both
+  possibilities instead of guessing.
 - **Failure safety.** The whole archive is read and converted before anything is
   written, and the merged log is saved through `LocalLibrary`: a failed write
   leaves both memory and the previous file bytes untouched, and an unreadable
@@ -189,6 +191,31 @@ idempotent re-import, superset merges, preserved shortcut and older archive rows
 all three limits, both DST transitions, a month-boundary rollover, overlap
 sharing, negative intervals, and a blocked or unwritable master log never being
 overwritten.
+
+### Archive conversion: what was actually measured
+
+A one-off harness (not committed, and no change to `expectations.json`) loaded
+`index.html` and ran its own `csvRows()`, `loadDeliv()` and `toLog()` in Node on
+the same synthetic 16-row delivery file the port was given. **All 11 rows with
+parseable timestamps came out byte-identical** — date, time, zone, payout,
+miles, items, minutes and placeholders — once both sides went through the same
+pipe-table canonicaliser.
+
+The two rows with unparseable timestamps diverge, on purpose:
+
+- `new Date("garbage:00Z")` is **not** `NaN` in V8; it is 2000-01-01. The web app
+  therefore keeps that row, its overlap block then spans 2000→2026, and five
+  *valid* neighbouring deliveries are given 2,820,548 minutes each (940,182.5
+  estimated miles). Safari/JSC may return `NaN` instead and drop the row, so the
+  web behaviour here is engine-dependent.
+- The port rejects any row whose timestamps do not parse and counts it in
+  `invalidSkipped`, so one bad row cannot inflate its neighbours. No web
+  expectation was refreshed to make this pass.
+
+Practical consequence of the preserved UTC→Pacific conversion: a delivery the
+archive writes as `2026-11-01 06:20` is stored as `2026-10-31 23:20`, so late
+evening deliveries land on the previous day and a few land in the previous
+month — which is the month statement reconciliation will allocate them under.
 
 ## What is deliberately NOT ported yet
 
@@ -292,8 +319,11 @@ CI (`.github/workflows/ios.yml`):
 | App compiles for iOS | Proven only by CI — the unsigned simulator build |
 | Statement import reachable in the app | Wired to the pipeline and compiled by CI; never launched by hand on a simulator or device |
 | Archive import reachable in the app | Wired and compiled by CI; never launched by hand, and never run against a real DoorDash archive |
-| ZIP reader tested on real bytes | Yes — generated `.zip` fixtures built with ZIPFoundation inside `swift test` |
-| Oversized / over-entry-count archives rejected | Yes, by test; encryption is detected only as a read failure |
+| ZIP reader tested on real bytes | Yes — generated `.zip` fixtures built with ZIPFoundation inside `swift test`, plus one checked-in encrypted `zip -e` archive |
+| Oversized / over-entry-count archives rejected | Yes, by test |
+| Encrypted archive refused | Yes, by test: zero listed entries are reported as encrypted-or-damaged, and nothing is written |
+| Archive conversion matches the web app | Verified for well-formed timestamps: an out-of-tree harness ran `index.html`'s `csvRows`/`loadDeliv`/`toLog` in Node on the same fixture and all 11 valid rows were byte-identical |
+| Rows with invalid timestamps | Deliberate divergence, documented above: the port rejects and counts them; the web app (V8) keeps them as 2000-01-01 and corrupts neighbouring minutes |
 | Installed on a physical iPhone | **No** — needs an Apple signing identity |
 
 [XcodeGen]: https://github.com/yonaskolb/XcodeGen

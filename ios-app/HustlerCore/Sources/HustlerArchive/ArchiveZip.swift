@@ -37,6 +37,17 @@ public enum DeliveryArchiveFile {
             }
         }
 
+        // A `zip -e` encrypted archive opens as an `Archive` but lists **no**
+        // entries, so this is the only place that case is visible. Without it an
+        // encrypted export would be reported as "no delivery_information.csv",
+        // which is a misleading thing to tell someone who picked the right file.
+        guard inspected > 0 else {
+            throw ArchiveImportError.unreadableArchive(
+                reason: "the archive lists no readable entries, which is what an encrypted "
+                    + "or damaged archive looks like"
+            )
+        }
+
         guard let entry = match else {
             throw ArchiveImportError.deliveryFileMissing
         }
