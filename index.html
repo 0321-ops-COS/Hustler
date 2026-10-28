@@ -150,7 +150,7 @@ nav button[hidden]{display:none}
     <h2 style="font-size:17px">Paste your offers log</h2>
     <p class="hint">This is your master log, one table the whole app reads. Each row looks like what the shortcut writes: | Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack |. Anything you paste or load is converted to it.</p>
     <textarea id="csv" placeholder="| 2026-10-27 14:46| 26.50 | 9.1 | 6 |2.91 | 22.42| 30.06 | TAKE IT | 80.00 | Accept | 15.25 |"></textarea>
-    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button><button class="btn ghost" id="clear">Clear</button></div>
+    <div class="row"><button class="btn" id="load">Analyze and save</button><button class="btn ghost" id="demo">Try demo data</button><button class="btn ghost" id="pasteRows">Paste copied rows</button><button class="btn ghost" id="clear">Clear for today</button></div>
     <p class="hint">Add your offers file or data_archive.zip on the Data page. <button class="btn ghost" style="padding:4px 10px" data-open="data">Open Data page</button></p>
     <div id="check" style="margin-top:12px"></div>
     <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
@@ -525,7 +525,7 @@ $("#load").onclick=async()=>{const mm=masterLog($("#csv").value);if(!logRows(mm)
   const w=await commitLog(mm);
   $("#saveInfo").textContent=w==="account"?"Saved to your account.":w?"Saved in this browser only.":"Could not save.";
   document.querySelector('[data-t="dash"]').click()};
-$("#clear").onclick=async()=>{$("#csv").value="";analyze([]);await put("log",{csv:"",v:1});toast("Cleared")};
+$("#clear").onclick=async()=>{const d=new Date(),today=[d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");const before=masterLog($("#csv").value),lines=before.split("\n"),keep=lines.slice(2).filter(l=>!l.startsWith("| "+today)&&!l.startsWith("|"+today)),removed=lines.length-2-keep.length;if(!removed){toast("No entries for today");return}const out=masterLog(keep.join("\n")),saved=await commitLog(out);$("#saveInfo").textContent=saved==="account"?"Entries for today cleared and saved to your account.":saved?"Entries for today cleared in this browser; cloud save is pending.":"Could not save the change.";toast(removed+" entries for today cleared")};
 $("#demo").onclick=()=>{const Z=["Vista","Oceanside","Carlsbad","San Marcos"],o=["date,time,zone,payout,miles,items,minutes,verdict,choice"];
   for(let i=0;i<40;i++){const m=+(1.5+Math.random()*7).toFixed(1),p=+(3+m*(0.9+Math.random()*1.2)).toFixed(2),v=p/m>1.6?"Accept":"Decline",c=Math.random()<.85?v:(v=="Accept"?"Declined":"Accepted");
     o.push(`2026-10-${10+i%14},12:${10+i},${Z[i%4]},${p},${m},${1+i%4},${Math.round(10+m*3.2)},${v},${c=="Accept"?"Accepted":c=="Decline"?"Declined":c}`)}
