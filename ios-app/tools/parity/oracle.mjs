@@ -1,10 +1,27 @@
 // Read-only parity oracle: executes index.html's own functions in a stubbed
 // DOM so native expectations are observed behaviour, not transcription.
-// Reads index.html, writes nothing to it.
+// Reads index.html and never writes it.
+//
+//   node oracle.mjs            --check (default): compare with expectations.json
+//   node oracle.mjs --update   rewrite expectations.json (approved changes only)
+//
+// --check never writes, so expectations cannot be refreshed to make a failing
+// test pass by accident.
+
 import fs from 'node:fs';
 import vm from 'node:vm';
 
 process.on('unhandledRejection', () => {});
+
+const EXPECTATIONS = 'ios-app/tools/parity/expectations.json';
+const MODE = process.argv.includes('--update') ? 'update' : 'check';
+
+for (const flag of process.argv.slice(2)) {
+  if (flag !== '--update' && flag !== '--check') {
+    console.error(`unknown argument: ${flag}`);
+    process.exit(2);
+  }
+}
 
 const html = fs.readFileSync('index.html', 'utf8');
 const start = html.lastIndexOf('<script>');
@@ -159,18 +176,53 @@ const result = vm.runInContext(`(() => {
   return out;
 })()`, sandbox);
 
-fs.writeFileSync('ios-app/tools/parity/expectations.json', JSON.stringify(result, null, 2));
-console.log(JSON.stringify({
-  header: result.header,
-  num: result.num, f: result.f,
-  yes: Object.fromEntries(payload.words.map((w, i) => [w, result.yes[i]])),
-  took: Object.fromEntries(payload.words.map((w, i) => [w, result.took[i]])),
-  ramp: result.ramp,
-  verdict: result.verdict.map(v => ({ id: v.id, ok: v.ok, mn: v.mn, netF: v.netF, hrF: v.hrF, pmF: v.pmF, reqMF: v.reqMF, reqHF: v.reqHF })),
-  rows: result.rows,
-  parsed: Object.fromEntries(Object.entries(result.parsed).map(([k, v]) => [k, v.map(r => [r.date, r.time, r.minutes, r.src, r.zone])])),
-  pipe: result.pipe,
-  arch: result.arch,
-  accept: result.accept,
-  mergedRows: Object.fromEntries(Object.entries(result.merged).map(([k, v]) => [k, Math.max(0, v.split('\n').length - 2)]))
-}, null, 2));
+function diff(expected, actual, path = '', out = []) {
+  if (out.length >= 60) return out;
+  const bothArrays = Array.isArray(expected) && Array.isArray(actual);
+  const bothObjects = expected !== null && actual !== null &&
+                      typeof expected === 'object' && typeof actual === 'object';
+  if (bothArrays) {
+    if (expected.length !== actual.length) {
+      out.push({ path, note: `array length ${expected.length} -> ${actual.length}` });
+    }
+    for (let i = 0; i < Math.min(expected.length, actual.length); i += 1) {
+      diff(expected[i], actual[i], `${path}[${i}]`, out);
+    }
+  } else if (bothObjects && !bothArrays) {
+    for (const key of new Set([...Object.keys(expected), ...Object.keys(actual)])) {
+      diff(expected[key], actual[key], path ? `${path}.${key}` : key, out);
+    }
+  } else if (!Object.is(expected, actual)) {
+    out.push({ path, note: `${JSON.stringify(expected)} -> ${JSON.stringify(actual)}` });
+  }
+  return out;
+}
+
+if (MODE === 'update') {
+  fs.writeFileSync(EXPECTATIONS, JSON.stringify(result, null, 2));
+  console.log(`updated ${EXPECTATIONS}`);
+  console.log(`  verdict cases: ${result.verdict.length}, fixtures: ${Object.keys(result.master).length}`);
+  process.exit(0);
+}
+
+if (!fs.existsSync(EXPECTATIONS)) {
+  console.error(`missing ${EXPECTATIONS}; run with --update once and review the diff`);
+  process.exit(1);
+}
+
+const captured = JSON.parse(fs.readFileSync(EXPECTATIONS, 'utf8'));
+const differences = diff(captured, result);
+
+if (differences.length === 0) {
+  console.log('oracle: no drift against the captured web expectations');
+  console.log(`  verdict cases: ${result.verdict.length}, fixtures: ${Object.keys(result.master).length}`);
+  process.exit(0);
+}
+
+console.error(`oracle: WEB BEHAVIOUR DRIFTED from ${EXPECTATIONS}`);
+for (const d of differences.slice(0, 20)) {
+  console.error(`  ${d.path}: ${d.note}`);
+}
+if (differences.length > 20) console.error(`  ... ${differences.length - 20} more difference(s)`);
+console.error('For an approved change, run --update and review the expectations diff with the native tests.');
+process.exit(1);

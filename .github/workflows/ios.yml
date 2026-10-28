@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - "ios-app/**"
+      - "index.html"
       - ".github/workflows/ios.yml"
   pull_request:
     paths:
       - "ios-app/**"
+      - "index.html"
       - ".github/workflows/ios.yml"
   workflow_dispatch:
 
@@ -23,6 +25,26 @@ env:
   HOMEBREW_NO_INSTALL_CLEANUP: "1"
 
 jobs:
+  # Cheap Linux gate; no macOS minutes. Fails when index.html's behaviour no
+  # longer matches the captured expectations, or when the native tests stopped
+  # asserting those expectations.
+  parity-drift:
+    name: Parity drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Recompute the oracle and compare with captured expectations
+        run: node ios-app/tools/parity/oracle.mjs --check
+
+      - name: Check the native tests still assert those expectations
+        run: node ios-app/tools/parity/drift.mjs
+
   core-tests:
     name: HustlerCore tests
     runs-on: macos-26
@@ -47,7 +69,7 @@ jobs:
         run: |
           set -o pipefail
           grep -E "Executed [1-9][0-9]* test" core-tests.log
-          echo "A test really ran (not skipped, not zero)."
+          echo "At least one test really ran."
 
       - name: Summarise failure
         if: failure()
