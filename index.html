@@ -77,6 +77,15 @@ th{color:var(--mut);font-weight:600}
 .pdiff.none{color:var(--mut);font-weight:400}
 .pmeta{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:4px;font-size:12px;color:var(--mut)}
 .pmeta b{color:var(--tx);font-weight:600;white-space:nowrap}
+/* delivery count check: every line wraps, only the number stays whole, so it fits a 360px card */
+#dcCard .dcl{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px}
+#dcCard .dck{color:var(--mut);min-width:0}
+#dcCard .dck i{display:block;font-style:normal;font-size:11px;opacity:.85}
+#dcCard .dcl b{font-variant-numeric:tabular-nums;white-space:nowrap}
+#dcCard .dcs{border-top:1px solid var(--line);padding:7px 0;font-size:12px;line-height:1.45}
+#dcCard .dcs i{display:block;font-style:normal;color:var(--mut);font-size:11px}
+#dcCard .dcwarn{color:var(--no)}
+#dcCard h3{font-size:13px;color:var(--mut);font-weight:600;margin:14px 0 2px;text-transform:uppercase;letter-spacing:.04em}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 label{display:block;font-size:13px;color:var(--mut)}
 input{width:100%;margin-top:4px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:16px Sora,sans-serif}
@@ -203,6 +212,9 @@ nav button[hidden]{display:none}
   <div class="card"><h2 style="font-size:17px">DoorDash archive</h2>
     <label id="drop2" style="display:block;margin-top:10px;border:2px dashed var(--g3);border-radius:14px;padding:22px;text-align:center;color:var(--tx);cursor:pointer">Drop data_archive.zip here or tap to choose<input type="file" id="file3" accept=".zip,.csv" hidden><small style="display:block;color:var(--mut);margin-top:4px">Only the delivery file is read, inside your browser. Your personal info file is ignored and never saved. Pay and miles are estimated from your settings. Drop your statement PDFs in Earn to correct them.</small></label></div>
   <div class="card"><h2 style="font-size:17px">Master file</h2><p class="hint" id="dataMaster"></p><div class="row"><button class="btn" data-open="log">Open and edit master file</button></div></div>
+  <div class="card" id="dcCard"><h2 style="font-size:17px">Delivery count check</h2><p class="hint">Read only. It explains the gap between the header count and DoorDash without changing any count.</p>
+    <div id="dcOut"><p class="hint">Load your log to see the check.</p></div>
+    <div class="row"><button class="btn ghost" id="dcCopy">Copy report</button><button class="btn ghost" id="dcGo">Refresh</button></div></div>
   <div class="card" id="wipeCard"><h2 style="font-size:17px">Delete data</h2><p class="hint">Removes it from this browser and from your account if you are signed in. This cannot be undone. Export a handoff file first if you want a copy.</p>
     <div class="row"><button class="btn ghost" data-wipe="log">Clear master log</button><button class="btn ghost" data-wipe="archive">Remove archive</button><button class="btn ghost" data-wipe="statements">Remove statements</button><button class="btn ghost" data-wipe="ca">Clear CA entries</button><button class="btn ghost" data-wipe="files">Delete saved original files</button></div>
     <div class="row" style="margin-top:10px"><button class="btn" style="background:var(--bad,#d33);color:#fff" data-wipe="all">Wipe everything</button></div></div>
@@ -251,8 +263,8 @@ function menu(o){$("#nav").classList.toggle("open",o);$("#scrim").classList.togg
 $("#menuBtn").onclick=()=>menu(!$("#nav").classList.contains("open"));$("#scrim").onclick=()=>menu(false);
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>menu(false)));
 const CFG={shortcutName:"DoorDash Offer Analyzer",shortcutLink:"",appUrl:"",supabaseUrl:"https://xpcglmabtsceyzfrdiky.supabase.co",supabaseKey:"sb_publishable_-_9Q2cS-64BaU5-uQJDVlQ_c1k_IpeO"};
-const DEF={accept:85,estPay:7,estMph:20,mpg:17.5,wear:0.12,gas:5.75,rampTop:90,rampLow:85,floorMile:0.75,floorHour:10,baseMile:1.5,baseHour:18,bigItems:3,bigMile:2,bigHour:20,emergency:80,taxRate:0.70,target:85,caWage:16.90,caPct:120,caMile:0.37};
-const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"Ramp top (% acceptance)",rampLow:"Ramp low (% acceptance)",floorMile:"Floor $/mile",floorHour:"Floor $/hour",baseMile:"Base $/mile",baseHour:"Base $/hour",bigItems:"Big order: items over",bigMile:"Big order $/mile",bigHour:"Big order $/hour",emergency:"Emergency rate (%)",taxRate:"Mileage deduction rate ($/mi)",target:"Float target (% acceptance)",caWage:"CA minimum wage ($/hr)",caPct:"CA guarantee (% of min wage per active hour)",caMile:"CA guarantee per mile ($)"};
+const DEF={accept:85,estPay:7,estMph:20,mpg:17.5,wear:0.12,gas:5.75,rampTop:90,rampLow:85,floorMile:0.75,floorHour:10,baseMile:1.5,baseHour:18,bigItems:3,bigMile:2,bigHour:20,emergency:80,taxRate:0.70,target:85,caWage:16.90,caPct:120,caMile:0.37,ddTotal:0};
+const LBL={accept:"Acceptance rate (%)",estPay:"Archive est. pay per delivery ($)",estMph:"Archive est. avg speed (mph)",mpg:"MPG",wear:"Wear cost per mile ($)",gas:"Gas price ($/gal)",rampTop:"Ramp top (% acceptance)",rampLow:"Ramp low (% acceptance)",floorMile:"Floor $/mile",floorHour:"Floor $/hour",baseMile:"Base $/mile",baseHour:"Base $/hour",bigItems:"Big order: items over",bigMile:"Big order $/mile",bigHour:"Big order $/hour",emergency:"Emergency rate (%)",taxRate:"Mileage deduction rate ($/mi)",target:"Float target (% acceptance)",caWage:"CA minimum wage ($/hr)",caPct:"CA guarantee (% of min wage per active hour)",caMile:"CA guarantee per mile ($)",ddTotal:"DoorDash lifetime completed deliveries"};
 let S={...DEF},store=null,uid=null,isDemo=false;
 const num=v=>{const n=parseFloat(String(v).replace(/[$,]/g,""));return isNaN(n)?0:n};
 const $f=(n,d=2)=>"$"+n.toFixed(d);
@@ -394,7 +406,7 @@ function analyze(data){
   data=dedupeArch(data);showCheck(data);data=adjust(data);
   // master log order is arrival order; every tile reads it oldest to newest so streaks and "latest" are right
   data=data.map((r,i)=>[r,i]).sort((a,b)=>((a[0].date||"")+" "+(a[0].time||"")).localeCompare((b[0].date||"")+" "+(b[0].time||""))||a[1]-b[1]).map(x=>x[0]);
-  rows=data;try{renderMaster()}catch(e){}
+  rows=data;try{renderMaster()}catch(e){}try{renderDC()}catch(e){}
   // current acceptance rate = the newest shortcut row's Acceptance rate column in the master log
   LOGACC=null;for(let i=data.length-1;i>=0;i--){const r=data[i];if(r.src!=="archive"&&r.rate!==undefined&&r.rate!==""&&num(r.rate)>0){LOGACC=num(r.rate);break}}
   renderEarn();refreshFirst();const n=data.length;
@@ -508,7 +520,7 @@ async function toLog(){const O=ARCH.map(r=>{const b=+new Date(r[2]+":00Z"),p=+ne
  const lines=O.map(o=>{const q={};F.formatToParts(new Date(o.p)).forEach(x=>q[x.type]=x.value);const z=CITIES.find(c=>o.s.toLowerCase().includes(c.toLowerCase()))||"";return[q.year+"-"+q.month+"-"+q.day,q.hour+":"+q.minute,z,num(S.estPay).toFixed(2),(o.m/60*num(S.estMph)).toFixed(1),o.i||1,Math.round(o.m),"","Accepted","archive"].join(",")});
  const keep=masterLog($("#csv").value).split("\n").slice(2).filter(l=>!/\|\s*archive\s*\|\s*$/.test(l));
  await commitLog(masterLog(keep.join("\n")+"\n"+lines.join("\n")))}
-let ARCH=[];
+let ARCH=[],DCST=null;
 async function route(f){keepFile(f);const n=f.name.toLowerCase();if(n.endsWith(".zip"))return importZip(f);const t=await f.text();if(/ORDER_CREATED_TIME/i.test(t.slice(0,300)))return loadDeliv(t);return ingest(t)}
 function csvRows(t){const o=[];let r=[],c="",q=0;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch=='"'){if(t[i+1]=='"'){c+='"';i++}else q=0}else c+=ch}else if(ch=='"')q=1;else if(ch==','){r.push(c);c=""}else if(ch=='\n'||ch=='\r'){if(ch=='\r'&&t[i+1]=='\n')i++;r.push(c);c="";if(r.length>1||r[0])o.push(r);r=[]}else c+=ch}if(c||r.length){r.push(c);o.push(r)}return o}
 async function importZip(f){if(!window.JSZip){toast("Zip reader did not load");return}
@@ -517,8 +529,11 @@ async function importZip(f){if(!window.JSZip){toast("Zip reader did not load");r
 async function loadDeliv(t){const R=csvRows(t),H=(R[0]||[]).map(h=>h.toLowerCase()),ix=k=>H.indexOf(k),a=ix("order_created_time"),b=ix("actual_pickup_time"),c=ix("actual_delivery_time"),s=ix("store_name"),n=ix("total_item_count"),st=ix("order_status");
  if(a<0||c<0){toast("Not a DoorDash delivery file");return}
  const T=v=>(v||"").slice(0,16).replace(" ","T");
+ const C=R.slice(1),isCancel=r=>/cancel/i.test(r[st]||"");
+ // funnel stats for the Data page delivery check; the archive filter below is unchanged
+ const dc={rows:C.length,cancel:C.filter(isCancel).length,noTime:C.filter(r=>!isCancel(r)&&!r[c]).length};
  ARCH=R.slice(1).filter(r=>!/cancel/i.test(r[st]||"")&&r[c]).map(r=>[T(r[a]),T(r[b]),T(r[c]),(r[s]||"").slice(0,90),num(r[n])]);
- await put("archive",{v:1,r:ARCH});renderArch();await toLog();toast(ARCH.length+" deliveries added to your log");document.querySelector('[data-t="dash"]').click()}
+ await put("archive",{v:1,r:ARCH,dc});renderArch();await toLog();toast(ARCH.length+" deliveries added to your log");document.querySelector('[data-t="dash"]').click()}
 const D3=a=>new Date(a+":00Z");
 function tbl(h,r){return`<div class="wrap"><table><tr>${h.map(x=>`<th>${x}</th>`).join("")}</tr>${r.map(x=>`<tr>${x.map(y=>`<td>${y}</td>`).join("")}</tr>`).join("")}</table></div>`}
 const bar=(v,m)=>`<div style="background:var(--g2);height:8px;border-radius:5px;min-width:90px"><i style="display:block;height:100%;width:${100*v/m}%;background:var(--go);border-radius:5px"></i></div>`;
@@ -628,6 +643,78 @@ function renderQuests(R,RL,acc,st,best){const el=$("#quest");if(!el)return;
  +QDEF.map(q=>row(cur[q.id])).join("")
  +`<div style="margin:14px 0 4px;font-size:14px;display:flex;justify-content:space-between"><span>Lifetime net (estimate)</span><b>${$f(life,0)} / ${$f(ml,0)}</b></div><div class="bar"><i style="width:${Math.min(1,life/ml)*100}%"></i></div>`
  +`<p class="hint">Lifetime: ${cleared} weekly quest${cleared===1?"":"s"} cleared over ${weeks} week${weeks===1?"":"s"}. Lifetime totals never reset. Measured = counted straight from your log. Estimate = uses your car-cost settings and offer or archive time and miles, so tips and final pay can differ.</p>`}
+
+// ---- Delivery count check (Data page, read only) ----------------------------------------------------
+// Explains where the difference between the header count and DoorDash's completed-delivery number goes.
+// Nothing here changes the count, dedupe or acceptance logic; it only reads ARCH, the log and settings.
+const dcWhen=(d,t)=>{const x=new Date(String(d||"").slice(0,10)+"T"+((String(t||"00:00")+":00:00").slice(0,8)));return isNaN(x)?0:x.getTime()};
+const dcArchT=r=>{const x=+new Date(String(r[2]||"")+":00Z");return isNaN(x)?0:x};
+// toLog keeps an archive row only when delivery lands after (pickup - 8h): same test, used here for reporting.
+const dcToLogKeeps=r=>dcArchT(r)>(+new Date(String(r[1]||r[2]||"")+":00Z")-480000);
+// Same matching as dedupeArch, but it records which shortcut row claimed which archive row.
+function dcDedupe(raw){const q={},key=r=>(r.date||"").slice(0,10)+"|"+num(r.items),out=[];
+ raw.forEach(r=>{if(r.src!=="archive"&&took(r.choice)){const k=key(r);(q[k]=q[k]||[]).push(r)}});
+ raw.forEach(r=>{if(r.src!=="archive")return;const k=key(r),a=q[k];if(a&&a.length)out.push({row:r,hit:a.shift()})});
+ return out}
+// funnel arithmetic in one place, so the test harness can check it without a browser
+function dcFunnel(x){const written=x.archCount-x.toLogDrop,counted=written-x.dedupeDrop,total=counted+x.shortcutAcc;
+ return{written,counted,total,residual:x.final-total}}
+let DCTXT="";
+function dcRows(){try{return parse($("#csv").value||"")}catch(e){return[]}}
+
+function renderDC(){const el=$("#dcOut");if(!el)return;
+ const n=v=>v==null?"--":Number(v).toLocaleString();
+ const raw=dcRows(),dd=dcDedupe(raw),dedupeDrop=dd.length,realDrop=raw.length-dedupeArch(raw).length,mismatch=dd.length!==realDrop;
+ const toLogDrop=ARCH.filter(r=>!dcToLogKeeps(r)).length;
+ const shortcutAcc=raw.filter(r=>r.src!=="archive"&&took(r.choice)).length;
+ const final=(typeof rows!=="undefined"?rows:[]).filter(r=>took(r.choice)).length;
+ const F=dcFunnel({archCount:ARCH.length,toLogDrop,dedupeDrop,shortcutAcc,final});
+ const rec=ARCH.length?DCST:null;
+ const lastArch=ARCH.map(r=>String(r[2]||"")).filter(Boolean).sort().pop()||"",archDay=lastArch.slice(0,10);
+ const afterArch=archDay?raw.filter(r=>r.src!=="archive"&&took(r.choice)&&(r.date||"").slice(0,10)>archDay).length:null;
+ const ddTotal=num(S.ddTotal),gap=ddTotal>0?ddTotal-final:null;
+ // a. archive rows dropped by dedupeArch, with the shortcut row that matched them
+ const aList=dd.map(x=>{const diff=Math.round((dcWhen(x.row.date,x.row.time)-dcWhen(x.hit.date,x.hit.time))/60000);
+  return{d:x.row.date,t:x.row.time,i:x.row.items,z:x.row.zone,hd:x.hit.date,ht:x.hit.time,diff}}).sort((x,y)=>(String(y.d)+y.t).localeCompare(String(x.d)+x.t)).slice(0,25);
+ // b. archive rows dropped by the o.b > o.a filter; they never reached the log, so the store is still available
+ const bList=ARCH.filter(r=>!dcToLogKeeps(r)).map(r=>({d:String(r[2]||"").slice(0,10),t:String(r[2]||"").slice(11,16),i:r[4],s:r[3]})).sort((x,y)=>(y.d+y.t).localeCompare(x.d+x.t)).slice(0,25);
+ // c. shortcut accepted rows with no archive delivery within 60 minutes
+ const at=ARCH.map(dcArchT).filter(Boolean).sort((a,b)=>a-b);
+ const near=ms=>{if(!at.length)return null;let lo=0,hi=at.length-1;while(lo<hi){const m=(lo+hi)>>1;if(at[m]<ms)lo=m+1;else hi=m}const c=[at[lo],at[lo-1]].filter(v=>v!=null).map(v=>Math.abs(v-ms));return c.length?Math.min(...c):null};
+ const cList=raw.filter(r=>r.src!=="archive"&&took(r.choice)).map(r=>({d:r.date,t:r.time,i:r.items,z:r.zone,m:near(dcWhen(r.date,r.time))})).filter(x=>x.m==null||x.m>3600000).sort((x,y)=>(String(y.d)+y.t).localeCompare(String(x.d)+x.t)).slice(0,25);
+ const fun=[
+  {k:"Rows in the DoorDash archive file",v:rec?n(rec.rows):"not recorded",s:rec?"read from data_archive.zip":"re-add your archive file to record this"},
+  {k:"Removed as cancelled or with no delivery time",v:rec?n(rec.cancel+rec.noTime):"not recorded",s:rec?n(rec.cancel)+" cancelled, "+n(rec.noTime)+" with no delivery time":""},
+  {k:"Archive rows kept",v:n(ARCH.length),s:""},
+  {k:"Removed in toLog (delivery not after pickup)",v:n(toLogDrop),s:"o.b > o.a filter"},
+  {k:"Archive rows removed by dedupeArch",v:n(dedupeDrop),s:mismatch?"recorder saw "+n(dd.length)+", dedupeArch removed "+n(realDrop):""},
+  {k:"Shortcut-logged accepted offers",v:n(shortcutAcc),s:"live rows the shortcut wrote"},
+  {k:"Final count used by the header",v:n(final),s:"accepted rows in your log"},
+  {k:"Unaccounted",v:(F.residual>0?"+":"")+n(F.residual),s:F.residual===0?"the funnel adds up":"these rows come from somewhere else"}];
+ const line=f=>`<div class="dcl"><span class="dck">${esc(f.k)}${f.s?`<i>${esc(f.s)}</i>`:""}</span><b>${esc(f.v)}</b></div>`;
+ const al=aList.length?aList.map(x=>`<div class="dcs"><b>${esc(x.d)} ${esc(x.t)}</b> · ${n(x.i)} items · zone ${esc(x.z||"--")}<i>matched shortcut ${esc(x.hd)} ${esc(x.ht)} (${x.diff>=0?"+":""}${n(x.diff)} min)${Math.abs(x.diff)>30?' <span class="dcwarn">over 30 min apart</span>':""}</i></div>`).join(""):`<p class="hint">None.</p>`;
+ const bl=bList.length?bList.map(x=>`<div class="dcs"><b>${esc(x.d)} ${esc(x.t)}</b> · ${n(x.i)} items · ${esc(x.s||"--")}<i>delivery is not after pickup, so toLog skipped it</i></div>`).join(""):`<p class="hint">None.</p>`;
+ const cl=cList.length?cList.map(x=>`<div class="dcs"><b>${esc(x.d)} ${esc(x.t)}</b> · ${n(x.i)} items · zone ${esc(x.z||"--")}<i>${x.m==null?"no archive rows loaded":"nearest archive delivery is "+n(Math.round(x.m/60000))+" min away"}</i></div>`).join(""):`<p class="hint">Every shortcut row has an archive delivery within 60 minutes.</p>`;
+ el.innerHTML=`<div class="grid" style="margin-bottom:6px"><div class="stat"><div class="num">${n(final)}</div><span>Header count</span></div><div class="stat"><div class="num">${ddTotal>0?n(ddTotal):"--"}</div><span>DoorDash says</span></div><div class="stat"><div class="num ${gap===null?"":gap===0?"good":"money"}">${gap===null?"--":(gap>0?"+":"")+n(gap)}</div><span>Gap</span></div></div>`
+ +`<p class="hint">${gap===null?"Enter DoorDash's lifetime completed-delivery count below to see the gap.":gap===0?"The header matches DoorDash.":"The header is "+n(Math.abs(gap))+(gap>0?" under":" over")+" DoorDash."}</p>`
+ +`<h3>Funnel</h3>`+fun.map(line).join("")
+ +`<h3>Recency</h3>`+line({k:"Last archive delivery",v:archDay||"no archive rows",s:""})+line({k:"Shortcut accepted rows dated after it",v:afterArch==null?"--":n(afterArch),s:"logged with the shortcut after your archive ends"})
+ +`<label style="margin-top:14px">DoorDash lifetime completed deliveries<input inputmode="numeric" id="dcTotal" value="${ddTotal>0?ddTotal:""}"></label><p class="hint">Saved with your settings. DoorDash shows it on your account page.</p>`
+ +`<h3>dedupeArch removed (${n(dedupeDrop)})</h3>${al}`
+ +`<h3>o.b &gt; o.a removed (${n(toLogDrop)})</h3>${bl}`
+ +`<h3>No archive row within 60 min (${n(cList.length)})</h3><p class="hint">Info only. Archive rows carry no store name once logged, so these lists show the zone.</p>${cl}`;
+ const ti=$("#dcTotal");if(ti)ti.onchange=async()=>{S.ddTotal=num(ti.value);await put("settings",S);renderDC();toast("Saved")};
+ DCTXT=["Delivery count check","Header count: "+final,"DoorDash says: "+(ddTotal>0?ddTotal:"not entered"),"Gap: "+(gap===null?"unknown":gap),"","Funnel"]
+ .concat(fun.map(f=>"- "+f.k+": "+f.v+(f.s?" ("+f.s+")":"")))
+ .concat(["","Recency","- Last archive delivery: "+(archDay||"none"),"- Shortcut accepted rows after it: "+(afterArch==null?"n/a":afterArch),"","dedupeArch removed ("+dedupeDrop+")"])
+ .concat(aList.length?aList.map(x=>"- "+x.d+" "+x.t+", "+x.i+" items, zone "+(x.z||"-")+": matched shortcut "+x.hd+" "+x.ht+" ("+(x.diff>=0?"+":"")+x.diff+" min)"+(Math.abs(x.diff)>30?" OVER 30 MIN":"")):["- none"])
+ .concat(["o.b > o.a removed ("+toLogDrop+")"])
+ .concat(bList.length?bList.map(x=>"- "+x.d+" "+x.t+", "+x.i+" items, "+(x.s||"-")):["- none"])
+ .concat(["Shortcut accepted with no archive row within 60 min ("+cList.length+")"])
+ .concat(cList.length?cList.map(x=>"- "+x.d+" "+x.t+", "+x.i+" items, zone "+(x.z||"-")+", nearest "+(x.m==null?"n/a":Math.round(x.m/60000)+" min")):["- none"])
+ .join("\n")}
+$("#dcGo").onclick=()=>renderDC();
+$("#dcCopy").onclick=async()=>{try{await navigator.clipboard.writeText(DCTXT||"Delivery count check: nothing to report yet.");toast("Delivery check copied")}catch(e){toast("Copy blocked")}};
 
 // California pay guarantee (weekly)
 let CA={};
@@ -849,7 +936,7 @@ window.addEventListener("hashchange",()=>{
   drawFields();renderGame([],[]);renderMaster();
   await initStore();drawCloud();
   const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;DCST=ar.dc||null;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
   await pullOffers();
