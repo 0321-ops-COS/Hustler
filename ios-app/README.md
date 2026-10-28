@@ -1,9 +1,10 @@
 # ios-app — Hustler native foundation
 
-**Status: Milestone 1.** The offer verdict, acceptance-rate logic and master-log
-parsing/serialisation are ported into `HustlerCore` with regression tests pinned
-to observed web-app behaviour. There is still **no UI feature port**, no archive
-import, no ZIPFoundation, no Supabase/backend, and no signing.
+**Status: Milestone 2.** Verdicts, acceptance rates, master-log parsing, the
+Scoreboard totals, calendar bucketing and the decline float are ported into
+`HustlerCore` with regression tests pinned to observed web-app behaviour. There
+is still **no UI feature port**, no archive import, no ZIPFoundation, no
+persistence, no Supabase/backend, and no signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
@@ -11,7 +12,7 @@ import, no ZIPFoundation, no Supabase/backend, and no signing.
 - `HustlerCore` is a dependency-free SwiftPM library: Foundation only, no UI, no
   file system, no clock, no network.
 
-## What is ported (M1)
+## What is ported
 
 | Area | Type | Web-app source |
 |---|---|---|
@@ -20,28 +21,40 @@ import, no ZIPFoundation, no Supabase/backend, and no signing.
 | Pipe-table normalise, dedupe, archive-count merge, CSV→pipe, row count, ordering | `MasterLog` | `masterLog()`, `mergeLog()`, `csvToPipe()`, `isArchLine()`, `logRows()`, `keyOf` sort |
 | Pipe/CSV parsing into rows | `MasterLogParser`, `LogRow` | `parse()` |
 | `num()`, `$f()`, `+toFixed(1)` parity including tie rounding | `Money`, `JsNumber` | `num()`, `$f()` |
+| Scoreboard tiles: gross, net, net $/hr, net $/mile, offers, miles, hours, acceptance, followed-verdict | `Scoreboard`, `ScoreboardTotals` | `analyze()` |
+| Day / week / month / year buckets (weeks start Monday) and per-period totals | `PeriodGrouping`, `PeriodTotals` | `keyOf()`, `renderGame()` |
+| Decline float: declines left, declined in the last 100, the four message states | `DeclineFloat` | `renderFloat()` |
+
+Two populations are kept apart on purpose, because the web app measures them
+differently: **money, miles and hours** cover accepted rows only, while
+**acceptance** and the followed-verdict percentage cover non-archive rows only.
 
 ## What is deliberately NOT ported yet
 
-Scoreboard/`analyze` aggregation, monthly statement reconciliation (where **B1**
-lives), decline float, quests, California guarantee, history analytics,
-archive/ZIP import, PDF parsing, persistence, handoff, deep links, and every
-screen beyond the M0 shell.
+Monthly statement reconciliation (where **B1** lives), quests, the California
+pay guarantee, history analytics, archive/ZIP import, PDF parsing, persistence,
+handoff, deep links, and every screen beyond the M0 shell.
+
+The period *slicing* the Scoreboard does around "now" (last 10 days, 8 weeks,
+12 months) and the insertion of an empty current period are presentation and
+clock concerns; the core returns buckets and lets the UI decide.
 
 **B1 remains open and unchanged.** **B6 is preserved**: 15-column `shortcut` CSVs
-still lose Zone and Minutes in `csvToPipe`, exactly as the web app does. Other
-documented defects (B2, B3, B5, B9, B10, B11) are untouched; see
+still lose Zone and Minutes in `csvToPipe`, exactly as the web app does.
+**B11 is preserved**: with no acceptance data the float still reports a number
+from the default 89% instead of asking for a rate — `DeclineFloatTests` pins
+that behaviour so any future fix is a deliberate change. Other documented
+defects (B2, B3, B5, B9, B10) are untouched; see
 `docs/native-ios-audit-and-plan.md` §2.
 
 ## Verification without macOS minutes
 
-`tools/local-test.sh` runs the core suite on any Linux box or Mac. It uses an
-already-installed toolchain if present, and can fetch a pinned one:
+`tools/local-test.sh` runs the core suite on any Linux box or Mac:
 
 ```bash
 ios-app/tools/local-test.sh --install      # first run: fetch Swift 6.0.3 into ~/.local
 ios-app/tools/local-test.sh                # later runs: just test
-ios-app/tools/local-test.sh --filter MoneyTests
+ios-app/tools/local-test.sh --filter ScoreboardTests
 ```
 
 - Version is pinned by `SWIFT_VERSION` (default `6.0.3`); set `SWIFT_SHA256` to
@@ -55,9 +68,8 @@ ios-app/tools/local-test.sh --filter MoneyTests
 ## Parity drift detection
 
 The Swift tests do not encode guesses. `tools/parity/oracle.mjs` loads
-`index.html`, runs its own `verdict`, `ramp`, `parse`, `masterLog`, `mergeLog`,
-`csvToPipe`, `isArchLine`, `logRows`, `yes`, `took`, `num`, `$f` and `analyze`
-inside a stubbed DOM, and records the results in `tools/parity/expectations.json`.
+`index.html`, runs its own functions inside a stubbed DOM, and records the
+results in `tools/parity/expectations.json`.
 
 ```bash
 node ios-app/tools/parity/oracle.mjs            # --check is the default: never writes
@@ -65,16 +77,17 @@ node ios-app/tools/parity/oracle.mjs --update   # after an APPROVED change only
 node ios-app/tools/parity/drift.mjs             # native tests still assert those values
 ```
 
-`--check` re-runs the web app and deep-compares against the committed
-expectations, so editing a calculation in `index.html` turns the **Parity drift**
-job red. That is the point: the port must not silently diverge from the web app.
-`--update` is not for turning a failing test green; it is for shipping an
-approved change to both sides at once, with the expectations diff reviewed.
+The Scoreboard, period tables and float card are only reachable through
+rendering functions that read the wall clock, so the oracle stubs `Date` to a
+fixed Thursday (2026-10-29) and **parses the HTML those functions produce**. The
+expected values are therefore what the app displays, not a reimplementation of
+its formulas.
 
-`drift.mjs` then checks the native side: every `VerdictCase` is compared field by
-field and the id sets must match exactly, every money format string must be
-asserted, and acceptance assertions are traced back to the oracle fixture they
-came from.
+`drift.mjs` then checks the native side: `VerdictCase`, `PeriodCase`,
+`StatCase`, `PeriodTotalsCase` and `FloatCase` rows are compared field by field
+and the id/key sets must match exactly. A placeholder bucket that `renderGame`
+inserts for a period with no takings has no native equivalent and is skipped
+(`taken === 0` identifies it).
 
 **Stated limits.** `drift.mjs` cannot prove that the hand-maintained fixture text
 in `Fixtures.swift` is identical to the copy inside `oracle.mjs`, and it cannot

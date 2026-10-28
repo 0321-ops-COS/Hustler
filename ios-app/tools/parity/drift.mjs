@@ -7,7 +7,8 @@
 // Verified here:
 //   - every VerdictCase row, field by field, plus the exact id set;
 //   - every money format string in the oracle is asserted in MoneyTests;
-//   - acceptance assertions are mapped back to the oracle fixture they came from.
+//   - acceptance assertions are mapped back to the oracle fixture they came from;
+//   - every PeriodCase, StatCase, PeriodTotalsCase and FloatCase in the M2 tests.
 // Not verified here: the hand-maintained fixture text in Fixtures.swift versus
 // the copy inside oracle.mjs, and assertions this parser does not recognise.
 // `swift test` remains the authority for value equality.
@@ -19,6 +20,14 @@ const TESTS = 'ios-app/HustlerCore/Tests/HustlerCoreTests';
 const VERDICT_TESTS = `${TESTS}/VerdictParityTests.swift`;
 const MONEY_TESTS = `${TESTS}/MoneyTests.swift`;
 const ACCEPTANCE_TESTS = `${TESTS}/AcceptanceLogicTests.swift`;
+const PERIOD_TESTS = `${TESTS}/PeriodGroupingTests.swift`;
+const SCOREBOARD_TESTS = `${TESTS}/ScoreboardTests.swift`;
+const FLOAT_TESTS = `${TESTS}/DeclineFloatTests.swift`;
+
+// `renderGame` always inserts the current period even when it has no rows, so a
+// placeholder bucket can appear with zero takings. Those have no native
+// equivalent and are skipped below; a real bucket is only created by an
+// accepted row, so `taken === 0` identifies a placeholder exactly.
 
 const failures = [];
 const notes = [];
@@ -35,6 +44,9 @@ const expectations = JSON.parse(read(EXPECTATIONS));
 const verdictSource = read(VERDICT_TESTS);
 const moneySource = read(MONEY_TESTS);
 const acceptanceSource = read(ACCEPTANCE_TESTS);
+const periodSource = read(PERIOD_TESTS);
+const scoreboardSource = read(SCOREBOARD_TESTS);
+const floatSource = read(FLOAT_TESTS);
 
 // ---- 1. Verdict table: strict field comparison ------------------------------
 const casePattern = new RegExp(
@@ -133,6 +145,125 @@ for (const check of acceptanceChecks) {
   }
 }
 notes.push(`acceptance: ${acceptanceChecks.length} assertions resolved to oracle fixtures`);
+
+// ---- 4. Period keys --------------------------------------------------------
+const periodCases = new Map();
+for (const match of periodSource.matchAll(
+  /PeriodCase\(date: "([^"]*)", day: "([^"]*)", week: "([^"]*)", month: "([^"]*)", year: "([^"]*)"\)/g
+)) {
+  periodCases.set(match[1], { day: match[2], week: match[3], month: match[4], year: match[5] });
+}
+
+const expectedKeys = new Map(expectations.keyOf.map((k) => [k.date, k]));
+for (const date of expectedKeys.keys()) {
+  if (!periodCases.has(date)) failures.push(`period key "${date}" is in expectations.json but no PeriodCase asserts it`);
+}
+for (const date of periodCases.keys()) {
+  if (!expectedKeys.has(date)) failures.push(`period key "${date}" is asserted in Swift but absent from expectations.json`);
+}
+for (const [date, expected] of expectedKeys) {
+  const actual = periodCases.get(date);
+  if (!actual) continue;
+  for (const field of ['day', 'week', 'month', 'year']) {
+    if (actual[field] !== expected[field]) {
+      failures.push(`period "${date}".${field}: Swift asserts ${JSON.stringify(actual[field])}, oracle says ${JSON.stringify(expected[field])}`);
+    }
+  }
+}
+notes.push(`period keys: ${periodCases.size} asserted vs ${expectedKeys.size} oracle cases`);
+
+// ---- 5. Scoreboard stat tiles ----------------------------------------------
+const statCases = new Map();
+for (const match of scoreboardSource.matchAll(
+  /StatCase\(fixture: "(\w+)", label: "([^"]+)", value: "([^"]*)"\)/g
+)) {
+  if (!statCases.has(match[1])) statCases.set(match[1], new Map());
+  statCases.get(match[1]).set(match[2], match[3]);
+}
+
+for (const [fixture, expected] of Object.entries(expectations.scoreboard)) {
+  const actual = statCases.get(fixture);
+  if (!actual) {
+    failures.push(`scoreboard fixture "${fixture}" has oracle tiles but no StatCase asserts them`);
+    continue;
+  }
+  for (const [label, value] of expected) {
+    if (!actual.has(label)) {
+      failures.push(`scoreboard "${fixture}" tile "${label}" (${value}) is not asserted`);
+    } else if (actual.get(label) !== value) {
+      failures.push(`scoreboard "${fixture}" tile "${label}": Swift asserts ${JSON.stringify(actual.get(label))}, oracle says ${JSON.stringify(value)}`);
+    }
+  }
+  for (const label of actual.keys()) {
+    if (!expected.some(([name]) => name === label)) {
+      failures.push(`scoreboard "${fixture}" asserts tile "${label}", which the oracle does not produce`);
+    }
+  }
+}
+notes.push(`scoreboard: ${statCases.size} fixtures asserted`);
+
+// ---- 6. Period totals ------------------------------------------------------
+const totalCases = new Map();
+for (const match of scoreboardSource.matchAll(
+  /PeriodTotalsCase\(fixture: "(\w+)", period: "(\w+)", key: "([^"]*)", gross: "([^"]*)", net: "([^"]*)", taken: (\d+), netPerHour: "([^"]*)"\)/g
+)) {
+  const [, fixture, period, key, gross, net, taken, netPerHour] = match;
+  if (!totalCases.has(fixture)) totalCases.set(fixture, new Map());
+  if (!totalCases.get(fixture).has(period)) totalCases.get(fixture).set(period, new Map());
+  totalCases.get(fixture).get(period).set(key, { gross, net, taken: Number(taken), netPerHour });
+}
+
+for (const [fixture, periods] of Object.entries(expectations.periods)) {
+  for (const [period, rows] of Object.entries(periods)) {
+    const asserted = (totalCases.get(fixture) || new Map()).get(period) || new Map();
+    const expectedRows = rows.filter((row) => row[3] > 0);
+    for (const [key, gross, net, taken, netPerHour] of expectedRows) {
+      const actual = asserted.get(key);
+      if (!actual) {
+        failures.push(`period totals "${fixture}/${period}/${key}" is in expectations.json but not asserted`);
+        continue;
+      }
+      if (actual.gross !== gross) failures.push(`period totals "${fixture}/${period}/${key}".gross: Swift ${JSON.stringify(actual.gross)}, oracle ${JSON.stringify(gross)}`);
+      if (actual.net !== net) failures.push(`period totals "${fixture}/${period}/${key}".net: Swift ${JSON.stringify(actual.net)}, oracle ${JSON.stringify(net)}`);
+      if (actual.taken !== taken) failures.push(`period totals "${fixture}/${period}/${key}".taken: Swift ${actual.taken}, oracle ${taken}`);
+      if (actual.netPerHour !== netPerHour) failures.push(`period totals "${fixture}/${period}/${key}".netPerHour: Swift ${JSON.stringify(actual.netPerHour)}, oracle ${JSON.stringify(netPerHour)}`);
+    }
+    for (const key of asserted.keys()) {
+      if (!expectedRows.some(([name]) => name === key)) {
+        failures.push(`period totals "${fixture}/${period}" asserts key "${key}", which the oracle does not produce`);
+      }
+    }
+  }
+}
+notes.push(`period totals: ${[...totalCases.values()].reduce((sum, m) => sum + [...m.values()].reduce((n, k) => n + k.size, 0), 0)} buckets asserted`);
+
+// ---- 7. Decline float ------------------------------------------------------
+const floatCases = new Map();
+for (const match of floatSource.matchAll(
+  /FloatCase\(rate: (nil|[\d.]+), target: ([\d.]+), declined: (\d+), left: (-?[\d.]+), state: "(\w+)", message: "([^"]*)"\)/g
+)) {
+  const [, rate, target, declined, left, state, message] = match;
+  floatCases.set(`${rate}|${target}`, {
+    declined: Number(declined), left: Number(left), state, message
+  });
+}
+
+const expectedFloat = new Map(expectations.float.map((f) => [`${f.rate === null ? 'nil' : f.rate}|${f.target}`, f]));
+for (const key of expectedFloat.keys()) {
+  if (!floatCases.has(key)) failures.push(`float case rate|target "${key}" is in expectations.json but no FloatCase asserts it`);
+}
+for (const key of floatCases.keys()) {
+  if (!expectedFloat.has(key)) failures.push(`float case "${key}" is asserted in Swift but absent from expectations.json`);
+}
+for (const [key, expected] of expectedFloat) {
+  const actual = floatCases.get(key);
+  if (!actual) continue;
+  if (actual.declined !== expected.declined) failures.push(`float "${key}".declined: Swift ${actual.declined}, oracle ${expected.declined}`);
+  if (actual.left !== expected.left) failures.push(`float "${key}".left: Swift ${actual.left}, oracle ${expected.left}`);
+  if (actual.state !== expected.state) failures.push(`float "${key}".state: Swift ${JSON.stringify(actual.state)}, oracle ${JSON.stringify(expected.state)}`);
+  if (actual.message !== expected.message) failures.push(`float "${key}".message: Swift ${JSON.stringify(actual.message)}, oracle ${JSON.stringify(expected.message)}`);
+}
+notes.push(`decline float: ${floatCases.size} cases asserted vs ${expectedFloat.size} oracle cases`);
 
 // ---- Report ----------------------------------------------------------------
 for (const note of notes) console.log(`  ok: ${note}`);

@@ -7,6 +7,11 @@
 //
 // --check never writes, so expectations cannot be refreshed to make a failing
 // test pass by accident.
+//
+// The Scoreboard, period tables and decline float are only reachable through
+// rendering functions that read the wall clock and write HTML. Those are driven
+// here with a fixed clock (Date is stubbed) and their rendered output is parsed,
+// so the captured values are what the web app actually displays.
 
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -22,6 +27,11 @@ for (const flag of process.argv.slice(2)) {
     process.exit(2);
   }
 }
+
+// Thursday 29 Oct 2026, 18:00 UTC. Anchored well away from midnight so the
+// device timezone cannot move the calendar date, and inside the week that the
+// fixtures use (Monday 2026-10-26).
+const FIXED_NOW = Date.parse('2026-10-29T18:00:00Z');
 
 const html = fs.readFileSync('index.html', 'utf8');
 const start = html.lastIndexOf('<script>');
@@ -61,6 +71,17 @@ const sandbox = {
   setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0,
   confirm: () => true, alert() {}, prompt: () => null
 };
+
+// Fixed clock: `renderGame`/`renderFloat` call `new Date()` for "now".
+const RealDate = Date;
+class StubDate extends RealDate {
+  constructor(...args) {
+    if (args.length === 0) super(FIXED_NOW); else super(...args);
+  }
+  static now() { return FIXED_NOW; }
+}
+sandbox.Date = StubDate;
+
 vm.createContext(sandbox);
 vm.runInContext(appJs, sandbox, { filename: 'index.html' });
 
@@ -176,6 +197,116 @@ const result = vm.runInContext(`(() => {
   return out;
 })()`, sandbox);
 
+// ---- Scoreboard, period grouping and decline float -------------------------
+// Rendered output of the web app, with a fixed clock so the result does not
+// depend on the day the oracle runs.
+const sbTexts = {
+  mixed: HDR + '\n' +
+    '| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | 80.00 | Accept | 15.25 |\n' +
+    '| 2026-10-27 15:10 | 4.25 | 6.2 | 2 | 0.69 | -0.31 | -1.20 | SKIP | 89.00 | Declined | 0 |\n' +
+    '| 2026-10-26 09:00 | 12.00 | 4.0 | 3 | 3.00 | 9.06 | 27.18 | TAKE IT | 91.00 | Accept | 10 |\n' +
+    '| 2026-09-30 12:00 | 10.00 | 4.0 | 1 | 2.50 | 7.66 | 30.64 | TAKE IT | 88.00 | Accept | 5 |\n' +
+    // Archive rows written the way `toLog` writes them: no net, no hourly.
+    '| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 |  |  |  |  | Accepted |  | Temecula | 30 | archive |\n' +
+    '| 2026-10-24 12:10 | 9.00 | 6.0 | 2 | 1.50 | 5.10 | 11.84 |  |  | Accepted |  |  | 25 | archive |',
+  archive_only: HDR + '\n' +
+    '| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 |  |  |  |  | Accepted |  | Temecula | 30 | archive |\n' +
+    '| 2026-10-24 12:10 | 9.00 | 6.0 | 2 | 1.50 | 5.10 | 11.84 |  |  | Accepted |  |  | 25 | archive |'
+};
+
+const sbDates = [
+  '2026-10-27', '2026-10-25', '2026-10-26', '2026-03-01', '2026-01-01',
+  '2026-12-31', '2026-11-01', '2026-02-28', '2026-10-31', '2026-10-01'
+];
+
+const floatCases = [];
+for (const rate of [null, 100, 95, 90, 89, 87.5, 85, 80, 70]) {
+  for (const target of [85, 90, 0]) floatCases.push({ rate, target });
+}
+
+sandbox.__sb = { texts: sbTexts, dates: sbDates, floats: floatCases };
+
+const rendered = vm.runInContext(`(() => {
+  const out = { keyOf: [], stats: {}, periods: {}, float: [] };
+  for (const d of __sb.dates) {
+    out.keyOf.push({ date: d, day: keyOf(d, 'day'), week: keyOf(d, 'week'),
+                     month: keyOf(d, 'month'), year: keyOf(d, 'year') });
+  }
+  for (const name of Object.keys(__sb.texts)) {
+    analyze(parse(__sb.texts[name]));
+    out.stats[name] = ($('#stats') || {}).innerHTML || '';
+    out.periods[name] = {};
+    for (const p of ['day', 'week', 'month', 'year']) {
+      PER = p;
+      renderGame(LG[0], LG[1]);
+      out.periods[name][p] = ($('#earnTbl') || {}).innerHTML || '';
+    }
+  }
+  PER = 'day';
+  for (const c of __sb.floats) {
+    LOGACC = c.rate;
+    S.target = c.target;
+    renderFloat();
+    out.float.push({ rate: c.rate ?? null, target: c.target, html: ($('#float') || {}).innerHTML || '' });
+  }
+  LOGACC = null;
+  S.target = 85;
+  return out;
+})()`, sandbox);
+
+function parseStats(html) {
+  const out = [];
+  const re = /<div class="num[^"]*">([^<]*)<\/div><span>([^<]*)<\/span>/g;
+  let match;
+  while ((match = re.exec(html)) !== null) out.push([match[2], match[1]]);
+  return out;
+}
+
+function parsePeriodTable(html) {
+  const out = [];
+  const re = /<tr><td>([^<]*)<\/td><td>([^<]*)<\/td><td>([^<]*)<\/td><td>([^<]*)<\/td><td>([^<]*)<\/td><\/tr>/g;
+  let match;
+  while ((match = re.exec(html)) !== null) {
+    out.push([match[1], match[2], match[3], Number(match[4]), match[5]]);
+  }
+  return out;
+}
+
+function parseFloatPanel(html) {
+  const pick = (label) => {
+    const re = new RegExp(`<div class="num[^"]*">([^<]*)<\\/div><span>${label}</span>`);
+    const match = re.exec(html);
+    return match ? match[1] : null;
+  };
+  const msg = /<p class="hint" style="font-size:14px;color:var\(--tx\)">([^<]*)<\/p>/.exec(html);
+  const message = msg ? msg[1] : '';
+  const left = Number(pick('Declines left'));
+  const state = message.startsWith('NO FLOAT')
+    ? (left < 0 ? 'past' : 'none')
+    : message.startsWith('LOW.') ? 'low' : 'ok';
+  return {
+    declined: Number(pick('Declined, last 100')),
+    left,
+    // The tile shows the target after the `|| 85` fallback, so it is recorded
+    // separately from the target that was passed in.
+    targetUsed: Number(String(pick('Target')).replace('%', '')),
+    state,
+    message
+  };
+}
+
+result.keyOf = rendered.keyOf;
+result.scoreboard = {};
+for (const name of Object.keys(rendered.stats)) result.scoreboard[name] = parseStats(rendered.stats[name]);
+result.periods = {};
+for (const name of Object.keys(rendered.periods)) {
+  result.periods[name] = {};
+  for (const period of Object.keys(rendered.periods[name])) {
+    result.periods[name][period] = parsePeriodTable(rendered.periods[name][period]);
+  }
+}
+result.float = rendered.float.map((c) => Object.assign({ rate: c.rate, target: c.target }, parseFloatPanel(c.html)));
+
 function diff(expected, actual, path = '', out = []) {
   if (out.length >= 60) return out;
   const bothArrays = Array.isArray(expected) && Array.isArray(actual);
@@ -202,6 +333,7 @@ if (MODE === 'update') {
   fs.writeFileSync(EXPECTATIONS, JSON.stringify(result, null, 2));
   console.log(`updated ${EXPECTATIONS}`);
   console.log(`  verdict cases: ${result.verdict.length}, fixtures: ${Object.keys(result.master).length}`);
+  console.log(`  scoreboard: ${Object.keys(result.scoreboard).length}, float cases: ${result.float.length}`);
   process.exit(0);
 }
 
