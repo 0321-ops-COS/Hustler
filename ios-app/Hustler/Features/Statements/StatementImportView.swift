@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import HustlerCore
+import HustlerArchive
 
 /// The first screen that reaches the statement pipeline: a PDF or pasted text in,
 /// a stored monthly total out, and the month's allocation shown against the log.
