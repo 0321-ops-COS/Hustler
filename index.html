@@ -64,6 +64,19 @@ th{color:var(--mut);font-weight:600}
 #ca th small{font-size:10px}
 #ca td:first-child{white-space:normal}
 #ca .src{display:block;font-size:10px;font-weight:400;color:var(--mut)}
+#ca .src.inl{display:inline;margin-left:5px}
+#caWk{width:100%;margin-top:4px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:15px Sora,sans-serif}
+/* past weeks: one wrapping block per saved week, so nothing scrolls sideways on a phone */
+.prow{border-top:1px solid var(--line);padding:9px 0}
+.prow:first-of-type{border-top:0;padding-top:4px}
+.phead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pwk{font-size:13px;font-weight:700}
+.pdiff{font-size:13px;font-weight:700;white-space:nowrap}
+.pdiff.up{color:var(--go)}
+.pdiff.down{color:var(--no)}
+.pdiff.none{color:var(--mut);font-weight:400}
+.pmeta{display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:4px;font-size:12px;color:var(--mut)}
+.pmeta b{color:var(--tx);font-weight:600;white-space:nowrap}
 .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
 label{display:block;font-size:13px;color:var(--mut)}
 input{width:100%;margin-top:4px;background:var(--bg);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:10px;font:16px Sora,sans-serif}
@@ -624,7 +637,12 @@ function caAuto(k){const R=(LG[0]||[]).filter(r=>r.t&&weekKey(r.date)===k);retur
 function caMerge(k){const a=caAuto(k),m=CA[k]||{};const act=m.actual!=null&&m.actual!==""&&!isNaN(parseFloat(m.actual))?num(m.actual):null;
  return{...m,pay:m.pay>0?m.pay:a.pay,hours:m.hours>0?m.hours:a.hours,miles:m.miles>0?m.miles:a.miles,tips:m.tips>0?m.tips:0,actual:act,n:a.n,au:{pay:!(m.pay>0),hours:!(m.hours>0),miles:!(m.miles>0),tips:!(m.tips>0)}}}
 function caEst(e,logMiles){const h=e.hours||0,mi=e.miles>0?e.miles:logMiles,g=S.caPct/100*S.caWage*h+S.caMile*mi,adj=Math.max(0,g-(e.pay||0));return{g,mi,adj,miSrc:e.miles>0&&!(e.au&&e.au.miles)?"entered":"from log"}}
-let CAH=null,CAHW=null;
+// write one week's numbers into CA. A save with every field blank deletes only that week, never the others.
+function caSet(k,f){const pay=num(f.pay),hours=num(f.hours),miles=num(f.miles),tips=num(f.tips),av=f.actual;
+ const blank=!(pay>0||hours>0||miles>0||tips>0)&&(av==null||av==="");
+ if(blank){delete CA[k];return false}
+ CA[k]={pay,hours,miles,tips,actual:av===""||av==null?null:num(av)};return true}
+let CAH=null,CAHW=null,CASEL=null;
 const CAMAX=84;
 // pace = pay and miles per active hour over this week plus up to 3 earlier weeks (an estimate, not a promise)
 function caPace(wk){const W={};(LG[0]||[]).forEach(r=>{if(!r.t||!/^\d{4}-\d\d-\d\d/.test(r.date||""))return;const k=weekKey(r.date),g=W[k]=W[k]||{pay:0,h:0,mi:0};g.pay+=r.p;g.h+=r.min/60;g.mi+=r.m});
@@ -640,14 +658,28 @@ function renderCA(){const el=$("#ca");if(!el)return;
   const hm=h=>Math.floor(h)+"h "+String(Math.round((h%1)*60)).padStart(2,"0")+"m";
   const head=`<h2 style="font-size:17px">California pay guarantee</h2><p class="hint">Pay week ${fd(ws)} to ${fd(we)} (Monday to Sunday). ${left} day${left===1?"":"s"} left after today.</p>`;
   // Manual entries: whatever is saved in the "ca" store overrides the auto-estimate, and every row says which one it used.
-  const cur=CA[wk]||{},vv=v=>num(v)>0?String(+num(v).toFixed(2)):"",hmv=h=>h>0?Math.floor(h)+"h "+String(Math.round((h%1)*60)).padStart(2,"0")+"m":"";
+  const vv=v=>num(v)>0?String(+num(v).toFixed(2)):"",hmv=h=>h>0?Math.floor(h)+"h "+String(Math.round((h%1)*60)).padStart(2,"0")+"m":"";
+  // this week plus the 7 before it, newest first. The stipend posts after the week ends, so past weeks need entry too.
+  const caWeeks=[0,1,2,3,4,5,6,7].map(i=>{const d=new Date(wk+"T12:00:00");d.setDate(d.getDate()-7*i);return iso(d)});
+  if(!CASEL||caWeeks.indexOf(CASEL)<0){const dow=new Date(today+"T12:00:00").getDay();CASEL=(dow>=1&&dow<=3&&!CA[caWeeks[1]])?caWeeks[1]:wk}
+  const cur=CA[CASEL]||{},wd=wdates=>{const s=new Date(wdates+"T12:00:00"),e2=new Date(s);e2.setDate(e2.getDate()+6);return[fd(s),fd(e2)]};
+  const wlab=k=>{const w=wd(k),i=caWeeks.indexOf(k);return w[0]+" to "+w[1]+(i===0?" (this week)":i===1?" (last week)":i>1?" ("+i+" weeks ago)":"")};
   const tag=b=>`<span class="src">${b?"from log":"entered"}</span>`;
-  const frm=`<div class="card" style="margin:10px 0"><h3 style="font-size:15px;font-weight:700;margin:0">Enter your numbers</h3><p class="hint" style="margin:4px 0 10px">Copy these from DoorDash Earnings and Payout details. Saved numbers override the estimates from your log; leave a field blank to fall back to your log.</p><div class="fields"><label>DoorDash pay ($)<input inputmode="decimal" id="caPay" value="${vv(cur.pay)}"></label><label>Active time (like 9h 38m)<input id="caHrs" value="${hmv(cur.hours)}"></label><label>Miles<input inputmode="decimal" id="caMi" value="${vv(cur.miles)}"></label><label>Tips ($)<input inputmode="decimal" id="caTip" value="${vv(cur.tips)}"></label><label>Actual adjustment ($, posts after the week ends)<input inputmode="decimal" id="caAct" value="${cur.actual!=null?vv(cur.actual):""}"></label></div><div class="row"><button class="btn" id="caSave">Save week of ${fd(ws)}</button></div></div>`;
-  const bindFrm=()=>{const b=$("#caSave");if(!b)return;b.onclick=async()=>{
-    const pay=num($("#caPay").value),hrs=hm2h($("#caHrs").value),mi=num($("#caMi").value),tip=num($("#caTip").value),av=$("#caAct").value.trim();
-    if(!(pay>0||hrs>0||mi>0||tip>0)&&av==="")delete CA[wk];else CA[wk]={pay,hours:hrs,miles:mi,tips:tip,actual:av===""?null:num(av)};
-    await put("ca",{v:1,w:CA});toast(CA[wk]?"Saved the week of "+fd(ws):"Cleared, using your log");renderCA()}};
-  if(!(A.hours>0)&&!pace){el.innerHTML=head+`<div class="num" style="font-size:24px;font-weight:700;margin-top:10px">Not enough data</div><p class="hint">No accepted offers with active time in your log yet, so there is nothing to project. Enter the numbers below, or log offers.</p>`+frm;bindFrm();return}
+  const tags=b=>`<span class="src inl">${b?"from log":"entered"}</span>`;
+  const sd=d=>d===0?"$0.00":(d>0?"+":"−")+"$"+Math.abs(d).toFixed(2);
+  // past weeks reuse caMerge and caEst, so the comparison can never drift from the table above
+  const prow=k=>{const M=caMerge(k),E=caEst(M,M.miles),w=wd(k),dif=M.actual==null?null:M.actual-E.adj;
+    return `<div class="prow"><div class="phead"><b class="pwk">${w[0]} to ${w[1]}</b>${dif==null?'<span class="pdiff none">enter actual</span>':'<span class="pdiff '+(dif>=0?"up":"down")+'">'+sd(dif)+"</span>"}</div>`+
+    `<div class="pmeta"><span>Pay + tips <b>${$f(M.pay+M.tips)}</b>${tags(M.au.pay)}</span><span>Est. adj <b>${$f(E.adj)}</b>${tags(M.au.hours||M.au.miles)}</span><span>Actual <b>${M.actual==null?"--":$f(M.actual)}</b></span></div></div>`};
+  const pks=Object.keys(CA).filter(k=>k<wk&&CA[k]).sort().reverse().slice(0,8);
+  const past=pks.length?`<div class="card" style="margin:10px 0"><h3 style="font-size:15px;font-weight:700;margin:0">Past weeks</h3><p class="hint" style="margin:4px 0 2px">Estimate is what the guarantee should have added; the stipend is what DoorDash actually posted after the week ended.</p>${pks.map(prow).join("")}</div>`:"";
+  const frm=`<div class="card" style="margin:10px 0"><h3 style="font-size:15px;font-weight:700;margin:0">Enter your numbers</h3><p class="hint" style="margin:4px 0 10px">Copy these from DoorDash Earnings and Payout details. Saved numbers override the estimates from your log; leave a field blank to fall back to your log.</p><label>Week<select id="caWk">${caWeeks.map(k=>`<option value="${k}"${k===CASEL?" selected":""}>${wlab(k)}</option>`).join("")}</select></label><div class="fields" style="margin-top:12px"><label>DoorDash pay ($)<input inputmode="decimal" id="caPay" value="${vv(cur.pay)}"></label><label>Active time (like 9h 38m)<input id="caHrs" value="${hmv(cur.hours)}"></label><label>Miles<input inputmode="decimal" id="caMi" value="${vv(cur.miles)}"></label><label>Tips ($)<input inputmode="decimal" id="caTip" value="${vv(cur.tips)}"></label><label>Actual adjustment ($, posts after the week ends)<input inputmode="decimal" id="caAct" value="${cur.actual!=null?vv(cur.actual):""}"></label></div><div class="row"><button class="btn" id="caSave">Save week of ${wd(CASEL)[0]}</button></div></div>`;
+  const bindFrm=()=>{const b=$("#caSave"),s=$("#caWk");
+    if(s)s.onchange=()=>{CASEL=s.value;renderCA()};
+    if(!b)return;b.onclick=async()=>{
+    const ok=caSet(CASEL,{pay:$("#caPay").value,hours:hm2h($("#caHrs").value),miles:$("#caMi").value,tips:$("#caTip").value,actual:$("#caAct").value.trim()});
+    await put("ca",{v:1,w:CA});toast((ok?"Saved":"Cleared")+" the week of "+wd(CASEL)[0]);renderCA()}};
+  if(!(A.hours>0)&&!pace){el.innerHTML=head+`<div class="num" style="font-size:24px;font-weight:700;margin-top:10px">Not enough data</div><p class="hint">No accepted offers with active time in your log yet, so there is nothing to project. Enter the numbers below, or log offers.</p>`+frm+past;bindFrm();return}
   const remMax=Math.max(0,Math.floor(Math.min(CAMAX-A.hours,12*(left+1))));
   if(CAHW!==wk||CAH===null){CAHW=wk;CAH=pace?Math.min(remMax,Math.max(0,Math.round(pace.avgH-A.hours))):0}
   CAH=Math.min(CAH,remMax);
@@ -663,7 +695,7 @@ function renderCA(){const el=$("#ca");if(!el)return;
   <p class="hint" style="margin-top:8px">So far: ${A.n} accepted offer${A.n===1?"":"s"} this week. "Entered" rows come from the form below, "from log" rows are estimated from your log.</p></div>
   ${pace?`<p class="hint">Rest of the week: move the slider to try different extra active hours. Pace used: ${$f(pace.pph)} pay and ${pace.mph.toFixed(1)} miles per active hour (${pace.weeks} week${pace.weeks===1?"":"s"} of your log). The slider tops out at ${remMax} h: ${CAMAX} h a week and 12 h a day.</p>
   <div style="display:flex;align-items:center;gap:12px;margin:12px 0"><input type="range" id="caH" min="0" max="${remMax}" step="1" value="${CAH}" style="flex:1;padding:0"><b id="caHo" style="min-width:64px;text-align:right"></b></div>`:`<p class="hint">Not enough history to project a pace yet, so only the actual so far is shown.</p>`}
-  <p class="hint" id="caNeq" style="font-family:ui-monospace,Menlo,monospace"></p>`+frm;
+  <p class="hint" id="caNeq" style="font-family:ui-monospace,Menlo,monospace"></p>`+frm+past;
   const upd=()=>{const h=pace?CAH:0,P=caProject(A,pace,h,rate,S.caMile),set=(id,v)=>{const e=$("#"+id);if(e)e.innerHTML=v};
     // an entered actual adjustment replaces the estimate, since that week already posted
     const adjA=A.actual!=null?A.actual:P.soFarAdj,adjT=A.actual!=null?A.actual:P.adj,tip=A.tips||0;
