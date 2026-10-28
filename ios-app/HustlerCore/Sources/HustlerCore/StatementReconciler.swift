@@ -45,17 +45,33 @@ public enum StatementReconciler {
             let totalCents = jsRound(statement.total * 100)
             guard totalCents.isFinite, abs(totalCents) < 9e15 else { continue }
 
-            let exact = indices.map { totalCents * rows[$0].numericMinutes / totalMinutes }
+            let exact: [Double] = indices.map { totalCents * rows[$0].numericMinutes / totalMinutes }
             guard exact.allSatisfy({ $0.isFinite && abs($0) < 9e15 }) else { continue }
 
-            var cents = exact.map { Int($0.rounded(.down)) }
+            var cents: [Int] = []
+            cents.reserveCapacity(exact.count)
+            for value in exact {
+                cents.append(Int(value.rounded(.down)))
+            }
             let allocated = cents.reduce(0, +)
             let remainder = Int(max(0, totalCents - Double(allocated)))
 
             // Descending fractional part, original order on a tie.
-            let order = exact.enumerated()
-                .map { (fraction: $0.element - $0.element.rounded(.down), offset: $0.offset) }
-                .sorted { $0.fraction == $1.fraction ? $0.offset < $1.offset : $0.fraction > $1.fraction }
+            //
+            // This is written out step by step because the chained
+            // `enumerated().map().sorted()` form exhausted the type checker's
+            // budget on the Apple toolchain (Swift 6.3.3) even though it built
+            // with the local 6.0.3 Linux toolchain. Keep it explicit.
+            var order: [(fraction: Double, offset: Int)] = []
+            order.reserveCapacity(exact.count)
+            for (offset, value) in exact.enumerated() {
+                let floorValue = value.rounded(.down)
+                order.append((fraction: value - floorValue, offset: offset))
+            }
+            order.sort { left, right in
+                if left.fraction == right.fraction { return left.offset < right.offset }
+                return left.fraction > right.fraction
+            }
 
             for entry in order.prefix(min(indices.count, remainder)) {
                 cents[entry.offset] += 1
