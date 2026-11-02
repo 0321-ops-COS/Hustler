@@ -59,6 +59,10 @@ struct HomeView: View {
                 HomeFloatCard(card: card)
             }
 
+            if let card = model.questCard {
+                QuestsCardView(card: card)
+            }
+
             if let bucket = model.selectedBucket {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(bucket.label).font(.subheadline).foregroundStyle(.secondary)
@@ -190,6 +194,55 @@ private struct HomeMasterTileView: View {
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal)
         .padding(.top, 8)
+    }
+}
+
+/// This week's quests. Every string, state and progress value is
+/// `Quests.Card`'s; this view only draws them.
+private struct QuestsCardView: View {
+    let card: Quests.Card
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(card.title).font(.subheadline.weight(.semibold))
+            Text(card.summary).font(.caption2).foregroundStyle(.secondary)
+
+            ForEach(card.rows) { row in
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        if case .tracked(true) = row.state {
+                            Image(systemName: "checkmark").font(.caption2).foregroundStyle(.green)
+                        }
+                        Text(row.name).font(.caption)
+                        Text(row.kind.rawValue)
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .background(.quaternary, in: Capsule())
+                        Spacer(minLength: 2)
+                        Text(row.valueText).font(.caption.weight(.semibold)).monospacedDigit()
+                    }
+                    if let hint = row.hint {
+                        Text(hint).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    if let progress = row.progress {
+                        ProgressView(value: progress)
+                    }
+                }
+            }
+
+            HStack {
+                Text(card.lifetimeLabel).font(.caption)
+                Spacer(minLength: 2)
+                Text(card.lifetimeText).font(.caption.weight(.semibold)).monospacedDigit()
+            }
+            ProgressView(value: card.lifetimeProgress)
+            Text(card.footer).font(.caption2).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+        .padding(.bottom, 8)
     }
 }
 
