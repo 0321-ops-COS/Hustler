@@ -46,6 +46,8 @@ public struct AppSettings: Equatable, Sendable {
     public var baseMile: Double, baseHour: Double, bigItems: Double, bigMile: Double, bigHour: Double
     public var emergency: Double, taxRate: Double, target: Double
     public var caWage: Double, caPct: Double, caMile: Double
+    /// The web app's `CA`: week key → pay, hours and miles, kept in settings.json.
+    public var caEntries: [String: CAWeekEntry]
     public var zoneGas: [String: Double]
     public var accSet: Bool
     public var shortcutName: String, shortcutLink: String, appUrl: String
@@ -59,6 +61,7 @@ public struct AppSettings: Equatable, Sendable {
         bigItems: Double = 3, bigMile: Double = 2, bigHour: Double = 20,
         emergency: Double = 80, taxRate: Double = 0.70, target: Double = 85,
         caWage: Double = 16.90, caPct: Double = 120, caMile: Double = 0.37,
+        caEntries: [String: CAWeekEntry] = [:],
         zoneGas: [String: Double] = [:], accSet: Bool = false,
         shortcutName: String = "DoorDash Offer Analyzer", shortcutLink: String = "", appUrl: String = "",
         pins: PagePins = PagePins(), schemaVersion: Int = AppSettings.currentVersion
@@ -72,6 +75,7 @@ public struct AppSettings: Equatable, Sendable {
         self.bigItems = bigItems; self.bigMile = bigMile; self.bigHour = bigHour
         self.emergency = emergency; self.taxRate = taxRate; self.target = target
         self.caWage = caWage; self.caPct = caPct; self.caMile = caMile
+        self.caEntries = caEntries
         self.zoneGas = zoneGas; self.accSet = accSet
         self.shortcutName = shortcutName; self.shortcutLink = shortcutLink; self.appUrl = appUrl
         self.pins = pins
@@ -95,7 +99,7 @@ extension AppSettings: Codable {
         case accept, estPay, estMph, mpg, wear, gas
         case rampTop, rampLow, floorMile, floorHour, baseMile, baseHour
         case bigItems, bigMile, bigHour, emergency
-        case taxRate, target, caWage, caPct, caMile
+        case taxRate, target, caWage, caPct, caMile, caEntries
         case zoneGas, accSet, shortcutName, shortcutLink, appUrl, pins
     }
 
@@ -138,6 +142,7 @@ extension AppSettings: Codable {
             caWage: Self.number(c, .caWage, or: d.caWage),
             caPct: Self.number(c, .caPct, or: d.caPct),
             caMile: Self.number(c, .caMile, or: d.caMile),
+            caEntries: Self.entryMap(c),
             zoneGas: Self.gasPrices(c, or: d.zoneGas),
             accSet: (try? c.decodeIfPresent(Bool.self, forKey: .accSet)) ?? d.accSet,
             shortcutName: (try? c.decodeIfPresent(String.self, forKey: .shortcutName)) ?? d.shortcutName,
@@ -160,6 +165,20 @@ extension AppSettings: Codable {
         }
         guard let value = decoded, value.isFinite, !mustBePositive || value > 0 else { return fallback }
         return value
+    }
+
+    /// One bad week drops that entry, not the whole map; a missing map is empty.
+    private static func entryMap(_ c: KeyedDecodingContainer<CodingKeys>) -> [String: CAWeekEntry] {
+        guard let nested = try? c.nestedContainer(keyedBy: AnyCodingKey.self, forKey: .caEntries) else {
+            return [:]
+        }
+        var entries: [String: CAWeekEntry] = [:]
+        for key in nested.allKeys {
+            if let entry = try? nested.decode(CAWeekEntry.self, forKey: key) {
+                entries[key.stringValue] = entry
+            }
+        }
+        return entries
     }
 
     /// One bad zone drops that entry, not the whole map; a missing map is empty.
