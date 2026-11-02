@@ -2,41 +2,24 @@ import Foundation
 import Combine
 import HustlerCore
 
-/// The view model's only source of "now", so a test can pin the current day,
-/// week, month and year instead of reading the wall clock.
-struct HomeClock: Sendable {
-    var now: @Sendable () -> Date
-
-    static let live = HomeClock(now: { Date() })
-
-    static func fixed(_ date: Date) -> HomeClock {
-        HomeClock(now: { date })
-    }
-}
-
-/// Home-screen state. No SwiftUI: the choices (which period, which buckets, what
-/// each row says) are all computed here, so they can be tested without a view.
-///
-/// Money and hours come from `Scoreboard.periodTotals`, the same `keyOf()` /
-/// `analyze()` port the web app uses, so a statement import is reflected as soon
-/// as `reload()` runs. Offers is counted separately: as in the Scoreboard, money
-/// and hours cover accepted rows only while offers cover every dated row.
+/// Home-screen state. The buckets, the slicing and the selection are
+/// `HomePeriodBoard` results; this class only owns the loaded rows and period.
 @MainActor
 final class HomeViewModel: ObservableObject {
 
     struct Bucket: Identifiable, Equatable {
         let key: String
         let label: String
-        let totals: PeriodTotals
-        let offers: Int
-        let isCurrent: Bool
+        let totals: ScoreboardTotals
+        let taken: Int
 
         var id: String { key }
-
-        var hoursText: String { JsNumber.toFixed(totals.minutes / 60, places: 1) + " h" }
-
-        /// `--` when the bucket has no hours to divide by, as the web app shows.
+        var bigNetText: String { Money.format(totals.net, decimals: 0) }
+        var rowGrossText: String { Money.format(totals.gross) }
+        var rowNetText: String { Money.format(totals.net) }
+        var takenText: String { "\(taken)" }
         var netPerHourText: String { totals.netPerHour.map { Money.format($0) } ?? "--" }
+        var tiles: [HomeTiles.Tile] { HomeTiles.tiles(totals) }
     }
 
     /// Default Day, then Week, Month, Year — the segmented control's order.
@@ -46,6 +29,9 @@ final class HomeViewModel: ObservableObject {
 
     /// Newest first, including the period containing `now` even when it is empty.
     @Published private(set) var buckets: [Bucket] = []
+
+    /// The period-table row the big number and tiles belong to.
+    @Published private(set) var selectedKey = ""
 
     /// The decline-float card, or nil when the log is unreadable.
     @Published private(set) var floatCard: HomeFloat.Card?
@@ -60,6 +46,7 @@ final class HomeViewModel: ObservableObject {
     private let clock: HomeClock
     private let settings: VerdictSettings
     private var rows: [LogRow] = []
+    private var board: HomePeriodBoard?
 
     init(
         store: LocalStore = LocalStore(),
@@ -70,6 +57,20 @@ final class HomeViewModel: ObservableObject {
         self.clock = clock
         self.settings = settings
         reload()
+    }
+
+    var selectedBucket: Bucket? { buckets.first { $0.key == selectedKey } }
+    var tiles: [HomeTiles.Tile] { selectedBucket?.tiles ?? [] }
+
+    /// The period table's first column title, from `renderGame()`.
+    var tableHeader: String { period == .week ? "Week of" : "Period" }
+
+    /// Tapping a period-table row. An unknown key keeps the current selection.
+    func select(_ key: String) {
+        guard var board else { return }
+        board.select(key)
+        self.board = board
+        selectedKey = board.selectedKey
     }
 
     /// Re-reads the stored log. A fresh `LocalLibrary` is used because the
@@ -91,46 +92,26 @@ final class HomeViewModel: ObservableObject {
 
     private func rebuild() {
         guard logUnavailable == nil else {
+            board = nil
             buckets = []
+            selectedKey = ""
             floatCard = nil
             return
         }
 
         floatCard = HomeFloat.card(rows: MasterLog.orderedForAnalysis(rows))
 
-        let totals = Scoreboard.periodTotals(rows, period: period, settings: settings)
-
-        var offers: [String: Int] = [:]
-        for row in rows where MasterLog.startsWithISODate(row.date) {
-            let key = PeriodGrouping.key(for: row.date, period: period)
-            if !key.isEmpty { offers[key, default: 0] += 1 }
-        }
-
-        var keys = Set(offers.keys).union(totals.keys)
-        let currentKey = PeriodGrouping.key(for: Self.dateText(clock.now()), period: period)
-        // Only once the log has dated rows: an undated log has nothing to list.
-        if !keys.isEmpty { keys.insert(currentKey) }
-
-        buckets = keys.sorted(by: >).map { key in
+        let next = HomePeriodBoard(rows: rows, period: period, clock: clock, settings: settings)
+        board = next
+        buckets = next.buckets.map { bucket in
             Bucket(
-                key: key,
-                label: Self.label(for: key, period: period),
-                totals: totals[key] ?? PeriodTotals(),
-                offers: offers[key] ?? 0,
-                isCurrent: key == currentKey
+                key: bucket.key,
+                label: Self.label(for: bucket.key, period: period),
+                totals: bucket.totals,
+                taken: bucket.taken
             )
         }
-    }
-
-    // MARK: - Text
-
-    /// `now` as the local calendar date, which is the date the log records.
-    private static func dateText(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        selectedKey = next.selectedKey
     }
 
     private static func label(for key: String, period: PeriodGrouping.Period) -> String {

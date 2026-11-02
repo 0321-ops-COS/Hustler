@@ -1,8 +1,8 @@
 import SwiftUI
 import HustlerCore
 
-/// Home: one period at a time, newest first, read from the stored master log.
-/// Everything is computed in `HomeViewModel`; this file only draws it.
+/// Home: the web Scoreboard's period block. All values are `HomePeriodBoard` /
+/// `HomeTiles` results; this file only draws them.
 struct HomeView: View {
     @StateObject private var model = HomeViewModel()
 
@@ -24,7 +24,7 @@ struct HomeView: View {
                     Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Statements tab.")
                 }
             } else {
-                periodsAndList
+                periods
             }
         }
         .navigationTitle("Home")
@@ -32,7 +32,7 @@ struct HomeView: View {
         .onAppear { model.reload() }
     }
 
-    private var periodsAndList: some View {
+    private var periods: some View {
         VStack(spacing: 0) {
             Picker("Period", selection: $model.period) {
                 ForEach(PeriodGrouping.Period.allCases, id: \.self) { period in
@@ -40,15 +40,76 @@ struct HomeView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.vertical, 8)
+            .padding([.horizontal, .top], 12)
 
             if let card = model.floatCard {
                 HomeFloatCard(card: card)
             }
 
-            List(model.buckets) { bucket in
-                HomeBucketRow(bucket: bucket)
+            if let bucket = model.selectedBucket {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(bucket.label).font(.subheadline).foregroundStyle(.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(bucket.bigNetText)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(.tint)
+                        Text("net").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+                .padding(.top, 12)
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                ForEach(model.tiles) { tile in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(tile.value)
+                            .font(.headline)
+                            .monospacedDigit()
+                            .foregroundStyle(tile.isMoney ? Color.accentColor : Color.primary)
+                        Text(tile.label).font(.caption).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(8)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                }
+            }
+            .padding([.horizontal, .top], 12)
+
+            List {
+                Section {
+                    ForEach(model.buckets) { bucket in
+                        let selected = bucket.key == model.selectedKey
+                        Button { model.select(bucket.key) } label: {
+                            HStack(spacing: 8) {
+                                Text(bucket.label)
+                                    .font(.caption.weight(selected ? .semibold : .regular))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text(bucket.rowGrossText).frame(width: 56, alignment: .trailing)
+                                Text(bucket.rowNetText).frame(width: 56, alignment: .trailing)
+                                Text(bucket.takenText).frame(width: 38, alignment: .trailing)
+                                Text(bucket.netPerHourText).frame(width: 56, alignment: .trailing)
+                            }
+                            .font(.caption)
+                            .monospacedDigit()
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(selected ? Color.accentColor.opacity(0.15) : Color.clear)
+                    }
+                } header: {
+                    HStack(spacing: 8) {
+                        Text(model.tableHeader).frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Gross").frame(width: 56, alignment: .trailing)
+                        Text("Net").frame(width: 56, alignment: .trailing)
+                        Text("Taken").frame(width: 38, alignment: .trailing)
+                        Text("Net $/hr").frame(width: 56, alignment: .trailing)
+                    }
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                }
             }
             .listStyle(.plain)
         }
@@ -93,44 +154,5 @@ private struct HomeFloatCard: View {
         .padding(.horizontal)
         .padding(.bottom, 8)
         .accessibilityElement(children: .combine)
-    }
-}
-
-private struct HomeBucketRow: View {
-    let bucket: HomeViewModel.Bucket
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(bucket.label)
-                    .font(.headline)
-                if bucket.isCurrent {
-                    Text("Now")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(Money.format(bucket.totals.net))
-                    .font(.headline)
-                    .monospacedDigit()
-            }
-
-            HStack(spacing: 10) {
-                Text("Gross \(Money.format(bucket.totals.gross))")
-                Text("\(bucket.offers) offers")
-                Text(bucket.hoursText)
-                Text("\(bucket.netPerHourText)/hr")
-            }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-        }
-        .padding(.vertical, 2)
-    }
-}
-
-#Preview {
-    NavigationStack {
-        HomeView()
     }
 }
