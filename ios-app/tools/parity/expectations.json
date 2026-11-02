@@ -1,0 +1,1725 @@
+{
+  "header": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+  "num": [
+    12.5,
+    1234.5,
+    0,
+    0,
+    12.5,
+    0.5,
+    -3,
+    0,
+    1000
+  ],
+  "f": [
+    "$1.50",
+    "$0.00",
+    "$-2.50",
+    "$1234.50",
+    "$0.13",
+    "$1.00",
+    "$2.67",
+    "$0.01",
+    "$1.33"
+  ],
+  "yes": [
+    true,
+    false,
+    true,
+    false,
+    true,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    false,
+    false
+  ],
+  "took": [
+    true,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "ramp": [
+    0,
+    0.2,
+    0.5,
+    1,
+    1,
+    0,
+    1
+  ],
+  "verdict": [
+    {
+      "id": "base_rate89",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$1.35",
+      "reqHF": "$16.40",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 1.35,
+      "reqH": 16.4
+    },
+    {
+      "id": "rate90_base_bars",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$1.50",
+      "reqHF": "$18.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 1.5,
+      "reqH": 18
+    },
+    {
+      "id": "rate85_floor_bars",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$0.75",
+      "reqHF": "$10.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 0.75,
+      "reqH": 10
+    },
+    {
+      "id": "rate87_5_mid_ramp",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$1.13",
+      "reqHF": "$14.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 1.125,
+      "reqH": 14
+    },
+    {
+      "id": "rate95_clamped",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$1.50",
+      "reqHF": "$18.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 1.5,
+      "reqH": 18
+    },
+    {
+      "id": "rate80_clamped",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$0.75",
+      "reqHF": "$10.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 0.75,
+      "reqH": 10
+    },
+    {
+      "id": "emergency_79_positive",
+      "ok": false,
+      "mn": 20,
+      "h": 0.3333333333333333,
+      "netF": "$-1.59",
+      "hrF": "$-4.77",
+      "pmF": "$0.25",
+      "reqMF": "$0.75",
+      "reqHF": "$10.00",
+      "net": -1.5885714285714285,
+      "hr": -4.765714285714286,
+      "pm": 0.25,
+      "reqM": 0.75,
+      "reqH": 10
+    },
+    {
+      "id": "emergency_79_negative",
+      "ok": false,
+      "mn": 20,
+      "h": 0.3333333333333333,
+      "netF": "$-3.04",
+      "hrF": "$-9.11",
+      "pmF": "$0.11",
+      "reqMF": "$0.75",
+      "reqHF": "$10.00",
+      "net": -3.0371428571428574,
+      "hr": -9.111428571428572,
+      "pm": 0.1111111111111111,
+      "reqM": 0.75,
+      "reqH": 10
+    },
+    {
+      "id": "big_order_items4",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$1.25",
+      "reqHF": "$14.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 1.25,
+      "reqH": 14
+    },
+    {
+      "id": "base_order_items3",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$1.05",
+      "reqHF": "$13.20",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 1.05,
+      "reqH": 13.2
+    },
+    {
+      "id": "zero_miles",
+      "ok": true,
+      "mn": 12,
+      "h": 0.2,
+      "netF": "$6.00",
+      "hrF": "$30.00",
+      "pmF": "$6.00",
+      "reqMF": "$1.35",
+      "reqHF": "$16.40",
+      "net": 6,
+      "hr": 30,
+      "pm": 6,
+      "reqM": 1.35,
+      "reqH": 16.4
+    },
+    {
+      "id": "blank_minutes",
+      "ok": true,
+      "mn": 21.5,
+      "h": 0.35833333333333334,
+      "netF": "$7.65",
+      "hrF": "$21.36",
+      "pmF": "$3.00",
+      "reqMF": "$1.35",
+      "reqHF": "$16.40",
+      "net": 7.654285714285715,
+      "hr": 21.360797342192694,
+      "pm": 3,
+      "reqM": 1.35,
+      "reqH": 16.4
+    },
+    {
+      "id": "negative_minutes",
+      "ok": true,
+      "mn": 21.5,
+      "h": 0.35833333333333334,
+      "netF": "$7.65",
+      "hrF": "$21.36",
+      "pmF": "$3.00",
+      "reqMF": "$1.35",
+      "reqHF": "$16.40",
+      "net": 7.654285714285715,
+      "hr": 21.360797342192694,
+      "pm": 3,
+      "reqM": 1.35,
+      "reqH": 16.4
+    },
+    {
+      "id": "zone_gas",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.44",
+      "hrF": "$25.05",
+      "pmF": "$2.98",
+      "reqMF": "$1.35",
+      "reqHF": "$16.40",
+      "net": 10.436,
+      "hr": 25.0464,
+      "pm": 2.9761904761904763,
+      "reqM": 1.35,
+      "reqH": 16.4
+    },
+    {
+      "id": "exact_base_bar",
+      "ok": false,
+      "mn": 15,
+      "h": 0.25,
+      "netF": "$4.42",
+      "hrF": "$17.66",
+      "pmF": "$1.50",
+      "reqMF": "$1.50",
+      "reqHF": "$18.00",
+      "net": 4.4159999999999995,
+      "hr": 17.663999999999998,
+      "pm": 1.5,
+      "reqM": 1.5,
+      "reqH": 18
+    },
+    {
+      "id": "rate_zero",
+      "ok": true,
+      "mn": 25,
+      "h": 0.4166666666666667,
+      "netF": "$10.62",
+      "hrF": "$25.48",
+      "pmF": "$2.98",
+      "reqMF": "$0.75",
+      "reqHF": "$10.00",
+      "net": 10.616,
+      "hr": 25.478399999999997,
+      "pm": 2.9761904761904763,
+      "reqM": 0.75,
+      "reqH": 10
+    }
+  ],
+  "master": {
+    "empty": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    "header_only": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    "two_rows": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | 80.00 | Accept | 15.25 |\n| 2026-10-27 15:10 | 4.25 | 6.2 | 2 | 0.69 | -0.31 | -1.20 | SKIP | 89.00 | Declined | 0 |",
+    "row_numbered": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    "duplicated_rows": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | 80.00 | Accept | 15.25 |",
+    "archive_dupes": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 | 5.10 | 20.40 |  |  | Accepted |  | Temecula | 30 | archive |\n| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 | 5.10 | 20.40 |  |  | Accepted |  | Temecula | 30 | archive |",
+    "archive_plus_shortcut": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 | 5.10 | 20.40 |  |  | Accepted |  | Temecula | 30 | archive |\n| 2026-10-25 18:20 | 9.00 | 5.0 | 2 | 1.80 | 7.10 | 21.30 | TAKE IT | 89.00 | Accepted | 10 |",
+    "csv_rows": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-24 12:10 | 8.50 | 3.2 | 2 |  |  |  | Accept |  | Accepted |  | Murrieta | 18 |  |\n| 2026-10-24 12:40 | 4.00 | 5.1 | 1 |  |  |  | Decline |  | Declined |  | Murrieta | 22 |  |",
+    "money_cells": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-23 11:00 | $1,234.50 | 9.1 | 2 | 135.66 | 1,200.00 | 100.00 | TAKE IT | 89.00 | Accept | 5 |",
+    "malformed": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+    "derived_minutes": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-21 12:00 | 10.00 | 4.0 | 2 | 2.50 | 7.66 | 23.00 | TAKE IT | 89 | Accept | 0 |",
+    "rate_older_and_newest": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-20 10:00 | 10.00 | 4.0 | 2 | 2.50 | 7.66 | 23.00 | TAKE IT | 92.00 | Accept | 0 |\n| 2026-10-27 10:00 | 10.00 | 4.0 | 2 | 2.50 | 7.66 | 23.00 | TAKE IT | 87.50 | Accept | 0 |",
+    "rate_blank_newest": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-26 10:00 | 9.00 | 4.0 | 2 | 2.25 | 6.66 | 20.00 | TAKE IT | 91.00 | Accept | 0 |\n| 2026-10-27 10:00 | 10.00 | 4.0 | 2 | 2.50 | 7.66 | 23.00 | TAKE IT |  | Accept | 0 |",
+    "rate_archive_newest": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-26 10:00 | 9.00 | 4.0 | 2 | 2.25 | 6.66 | 20.00 | TAKE IT | 91.00 | Accept | 0 |\n| 2026-10-25 19:30 | 7.00 | 5.0 | 2 | 1.40 | 5.10 | 20.40 |  |  | Accepted |  | Temecula | 30 | archive |"
+  },
+  "rows": {
+    "empty": 0,
+    "header_only": 0,
+    "two_rows": 2,
+    "row_numbered": 0,
+    "duplicated_rows": 1,
+    "archive_dupes": 2,
+    "archive_plus_shortcut": 2,
+    "csv_rows": 2,
+    "money_cells": 1,
+    "malformed": 0,
+    "derived_minutes": 1,
+    "rate_older_and_newest": 2,
+    "rate_blank_newest": 2,
+    "rate_archive_newest": 2
+  },
+  "parsed": {
+    "empty": [],
+    "header_only": [],
+    "two_rows": [
+      {
+        "date": "2026-10-27",
+        "time": "14:46",
+        "zone": "",
+        "payout": "26.50",
+        "miles": "9.1",
+        "items": "6",
+        "minutes": "44.8",
+        "net": "22.42",
+        "hourly": "30.06",
+        "verdict": "TAKE IT",
+        "rate": "80.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "15.25"
+      },
+      {
+        "date": "2026-10-27",
+        "time": "15:10",
+        "zone": "",
+        "payout": "4.25",
+        "miles": "6.2",
+        "items": "2",
+        "minutes": "29.5",
+        "net": "-0.31",
+        "hourly": "-1.20",
+        "verdict": "SKIP",
+        "rate": "89.00",
+        "choice": "Declined",
+        "src": "",
+        "slack": "0"
+      }
+    ],
+    "row_numbered": [
+      {
+        "date": "2026-10-26",
+        "time": "09:00",
+        "zone": "",
+        "payout": "12.00",
+        "miles": "4.0",
+        "items": "3",
+        "minutes": "20",
+        "net": "9.06",
+        "hourly": "27.18",
+        "verdict": "TAKE IT",
+        "rate": "89",
+        "choice": "Accept",
+        "src": "",
+        "slack": "20"
+      }
+    ],
+    "duplicated_rows": [
+      {
+        "date": "2026-10-27",
+        "time": "14:46",
+        "zone": "",
+        "payout": "26.50",
+        "miles": "9.1",
+        "items": "6",
+        "minutes": "44.8",
+        "net": "22.42",
+        "hourly": "30.06",
+        "verdict": "TAKE IT",
+        "rate": "80.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "15.25"
+      },
+      {
+        "date": "2026-10-27",
+        "time": "14:46",
+        "zone": "",
+        "payout": "26.50",
+        "miles": "9.1",
+        "items": "6",
+        "minutes": "44.8",
+        "net": "22.42",
+        "hourly": "30.06",
+        "verdict": "TAKE IT",
+        "rate": "80.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "15.25"
+      }
+    ],
+    "archive_dupes": [
+      {
+        "date": "2026-10-25",
+        "time": "18:00",
+        "zone": "Temecula",
+        "payout": "7.00",
+        "miles": "5.0",
+        "items": "2",
+        "minutes": "30",
+        "net": "5.10",
+        "hourly": "20.40",
+        "verdict": "",
+        "rate": "",
+        "choice": "Accepted",
+        "src": "archive",
+        "slack": ""
+      },
+      {
+        "date": "2026-10-25",
+        "time": "18:00",
+        "zone": "Temecula",
+        "payout": "7.00",
+        "miles": "5.0",
+        "items": "2",
+        "minutes": "30",
+        "net": "5.10",
+        "hourly": "20.40",
+        "verdict": "",
+        "rate": "",
+        "choice": "Accepted",
+        "src": "archive",
+        "slack": ""
+      }
+    ],
+    "archive_plus_shortcut": [
+      {
+        "date": "2026-10-25",
+        "time": "18:00",
+        "zone": "Temecula",
+        "payout": "7.00",
+        "miles": "5.0",
+        "items": "2",
+        "minutes": "30",
+        "net": "5.10",
+        "hourly": "20.40",
+        "verdict": "",
+        "rate": "",
+        "choice": "Accepted",
+        "src": "archive",
+        "slack": ""
+      },
+      {
+        "date": "2026-10-25",
+        "time": "18:20",
+        "zone": "",
+        "payout": "9.00",
+        "miles": "5.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "7.10",
+        "hourly": "21.30",
+        "verdict": "TAKE IT",
+        "rate": "89.00",
+        "choice": "Accepted",
+        "src": "",
+        "slack": "10"
+      }
+    ],
+    "csv_rows": [
+      {
+        "date": "2026-10-24",
+        "time": "12:10",
+        "zone": "Murrieta",
+        "payout": "8.50",
+        "miles": "3.2",
+        "items": "2",
+        "minutes": "18",
+        "verdict": "Accept",
+        "choice": "Accepted"
+      },
+      {
+        "date": "2026-10-24",
+        "time": "12:40",
+        "zone": "Murrieta",
+        "payout": "4.00",
+        "miles": "5.1",
+        "items": "1",
+        "minutes": "22",
+        "verdict": "Decline",
+        "choice": "Declined"
+      }
+    ],
+    "money_cells": [
+      {
+        "date": "2026-10-23",
+        "time": "11:00",
+        "zone": "",
+        "payout": "$1,234.50",
+        "miles": "9.1",
+        "items": "2",
+        "minutes": "720",
+        "net": "1,200.00",
+        "hourly": "100.00",
+        "verdict": "TAKE IT",
+        "rate": "89.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "5"
+      }
+    ],
+    "malformed": [
+      {
+        "date": "2026-10-22",
+        "time": "10:00",
+        "zone": "",
+        "payout": "n/a",
+        "miles": "3",
+        "items": "1",
+        "minutes": "60",
+        "net": "1",
+        "hourly": "1",
+        "verdict": "TAKE IT",
+        "rate": "89",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      },
+      {
+        "date": "not-a-date",
+        "time": "",
+        "zone": "",
+        "payout": "5",
+        "miles": "3",
+        "items": "1",
+        "minutes": "60",
+        "net": "1",
+        "hourly": "1",
+        "verdict": "SKIP",
+        "rate": "89",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      }
+    ],
+    "derived_minutes": [
+      {
+        "date": "2026-10-21",
+        "time": "12:00",
+        "zone": "",
+        "payout": "10.00",
+        "miles": "4.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "7.66",
+        "hourly": "23.00",
+        "verdict": "TAKE IT",
+        "rate": "89",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      }
+    ],
+    "rate_older_and_newest": [
+      {
+        "date": "2026-10-20",
+        "time": "10:00",
+        "zone": "",
+        "payout": "10.00",
+        "miles": "4.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "7.66",
+        "hourly": "23.00",
+        "verdict": "TAKE IT",
+        "rate": "92.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      },
+      {
+        "date": "2026-10-27",
+        "time": "10:00",
+        "zone": "",
+        "payout": "10.00",
+        "miles": "4.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "7.66",
+        "hourly": "23.00",
+        "verdict": "TAKE IT",
+        "rate": "87.50",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      }
+    ],
+    "rate_blank_newest": [
+      {
+        "date": "2026-10-26",
+        "time": "10:00",
+        "zone": "",
+        "payout": "9.00",
+        "miles": "4.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "6.66",
+        "hourly": "20.00",
+        "verdict": "TAKE IT",
+        "rate": "91.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      },
+      {
+        "date": "2026-10-27",
+        "time": "10:00",
+        "zone": "",
+        "payout": "10.00",
+        "miles": "4.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "7.66",
+        "hourly": "23.00",
+        "verdict": "TAKE IT",
+        "rate": "",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      }
+    ],
+    "rate_archive_newest": [
+      {
+        "date": "2026-10-26",
+        "time": "10:00",
+        "zone": "",
+        "payout": "9.00",
+        "miles": "4.0",
+        "items": "2",
+        "minutes": "20",
+        "net": "6.66",
+        "hourly": "20.00",
+        "verdict": "TAKE IT",
+        "rate": "91.00",
+        "choice": "Accept",
+        "src": "",
+        "slack": "0"
+      },
+      {
+        "date": "2026-10-25",
+        "time": "19:30",
+        "zone": "Temecula",
+        "payout": "7.00",
+        "miles": "5.0",
+        "items": "2",
+        "minutes": "30",
+        "net": "5.10",
+        "hourly": "20.40",
+        "verdict": "",
+        "rate": "",
+        "choice": "Accepted",
+        "src": "archive",
+        "slack": ""
+      }
+    ]
+  },
+  "pipe": [
+    "| 2026-10-27 14:46 | 26.50 | 9.1 | 6 |  |  |  | TAKE IT |  | Accept |  | Murrieta | 30 |  |",
+    "| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | x | Accept | 15.25 |",
+    null,
+    null
+  ],
+  "arch": [
+    false,
+    false,
+    false,
+    true
+  ],
+  "merged": {
+    "archive_twice": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 | 5.10 | 20.40 |  |  | Accepted |  | Temecula | 30 | archive |\n| 2026-10-25 18:00 | 7.00 | 5.0 | 2 | 1.40 | 5.10 | 20.40 |  |  | Accepted |  | Temecula | 30 | archive |",
+    "header_plus_rows": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | 80.00 | Accept | 15.25 |\n| 2026-10-27 15:10 | 4.25 | 6.2 | 2 | 0.69 | -0.31 | -1.20 | SKIP | 89.00 | Declined | 0 |",
+    "rows_twice": "| Date | Payout | Miles | Items | Per Mile | Net | Hourly | Verdict | Acceptance rate | Choice | Slack | Zone | Minutes | Source |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n| 2026-10-27 14:46 | 26.50 | 9.1 | 6 | 2.91 | 22.42 | 30.06 | TAKE IT | 80.00 | Accept | 15.25 |\n| 2026-10-27 15:10 | 4.25 | 6.2 | 2 | 0.69 | -0.31 | -1.20 | SKIP | 89.00 | Declined | 0 |"
+  },
+  "accept": {
+    "two_rows": {
+      "LOGACC": 89,
+      "LOGRATE": 50,
+      "settingsAccept": 89,
+      "rowCount": 2,
+      "dedupedArchive": 0
+    },
+    "row_numbered": {
+      "LOGACC": 89,
+      "LOGRATE": 100,
+      "settingsAccept": 89,
+      "rowCount": 1,
+      "dedupedArchive": 0
+    },
+    "archive_dupes": {
+      "LOGACC": null,
+      "LOGRATE": null,
+      "settingsAccept": 89,
+      "rowCount": 2,
+      "dedupedArchive": 2
+    },
+    "rate_older_and_newest": {
+      "LOGACC": 87.5,
+      "LOGRATE": 100,
+      "settingsAccept": 89,
+      "rowCount": 2,
+      "dedupedArchive": 0
+    },
+    "rate_blank_newest": {
+      "LOGACC": 91,
+      "LOGRATE": 100,
+      "settingsAccept": 89,
+      "rowCount": 2,
+      "dedupedArchive": 0
+    },
+    "rate_archive_newest": {
+      "LOGACC": 91,
+      "LOGRATE": 100,
+      "settingsAccept": 89,
+      "rowCount": 2,
+      "dedupedArchive": 1
+    }
+  },
+  "defaults": {
+    "accept": 89,
+    "estPay": 7,
+    "estMph": 20,
+    "mpg": 17.5,
+    "wear": 0.12,
+    "gas": 5.75,
+    "rampTop": 90,
+    "rampLow": 85,
+    "floorMile": 0.75,
+    "floorHour": 10,
+    "baseMile": 1.5,
+    "baseHour": 18,
+    "bigItems": 3,
+    "bigMile": 2,
+    "bigHour": 20,
+    "emergency": 80,
+    "taxRate": 0.7,
+    "target": 85,
+    "caWage": 16.9,
+    "caPct": 120,
+    "caMile": 0.37
+  },
+  "keyOf": [
+    {
+      "date": "2026-10-27",
+      "day": "2026-10-27",
+      "week": "2026-10-26",
+      "month": "2026-10",
+      "year": "2026"
+    },
+    {
+      "date": "2026-10-25",
+      "day": "2026-10-25",
+      "week": "2026-10-19",
+      "month": "2026-10",
+      "year": "2026"
+    },
+    {
+      "date": "2026-10-26",
+      "day": "2026-10-26",
+      "week": "2026-10-26",
+      "month": "2026-10",
+      "year": "2026"
+    },
+    {
+      "date": "2026-03-01",
+      "day": "2026-03-01",
+      "week": "2026-02-23",
+      "month": "2026-03",
+      "year": "2026"
+    },
+    {
+      "date": "2026-01-01",
+      "day": "2026-01-01",
+      "week": "2025-12-29",
+      "month": "2026-01",
+      "year": "2026"
+    },
+    {
+      "date": "2026-12-31",
+      "day": "2026-12-31",
+      "week": "2026-12-28",
+      "month": "2026-12",
+      "year": "2026"
+    },
+    {
+      "date": "2026-11-01",
+      "day": "2026-11-01",
+      "week": "2026-10-26",
+      "month": "2026-11",
+      "year": "2026"
+    },
+    {
+      "date": "2026-02-28",
+      "day": "2026-02-28",
+      "week": "2026-02-23",
+      "month": "2026-02",
+      "year": "2026"
+    },
+    {
+      "date": "2026-10-31",
+      "day": "2026-10-31",
+      "week": "2026-10-26",
+      "month": "2026-10",
+      "year": "2026"
+    },
+    {
+      "date": "2026-10-01",
+      "day": "2026-10-01",
+      "week": "2026-09-28",
+      "month": "2026-10",
+      "year": "2026"
+    }
+  ],
+  "scoreboard": {
+    "mixed": [
+      [
+        "Acceptance",
+        "75%"
+      ],
+      [
+        "Gross",
+        "$65"
+      ],
+      [
+        "Net after car",
+        "$49"
+      ],
+      [
+        "Net $/hr",
+        "$21.81"
+      ],
+      [
+        "Net $/mile",
+        "$1.74"
+      ],
+      [
+        "Offers",
+        "6"
+      ],
+      [
+        "Miles driven",
+        "28"
+      ],
+      [
+        "Hours",
+        "2.2"
+      ]
+    ],
+    "archive_only": [
+      [
+        "Acceptance",
+        "--"
+      ],
+      [
+        "Gross",
+        "$16"
+      ],
+      [
+        "Net after car",
+        "$10"
+      ],
+      [
+        "Net $/hr",
+        "$10.75"
+      ],
+      [
+        "Net $/mile",
+        "$0.90"
+      ],
+      [
+        "Offers",
+        "2"
+      ],
+      [
+        "Miles driven",
+        "11"
+      ],
+      [
+        "Hours",
+        "0.9"
+      ]
+    ]
+  },
+  "periods": {
+    "mixed": {
+      "day": [
+        [
+          "2026-10-29",
+          "$0.00",
+          "$0.00",
+          0,
+          "--"
+        ],
+        [
+          "2026-10-27",
+          "$26.50",
+          "$22.42",
+          1,
+          "$30.03"
+        ],
+        [
+          "2026-10-26",
+          "$12.00",
+          "$9.06",
+          1,
+          "$27.18"
+        ],
+        [
+          "2026-10-25",
+          "$7.00",
+          "$4.76",
+          1,
+          "$9.51"
+        ],
+        [
+          "2026-10-24",
+          "$9.00",
+          "$5.10",
+          1,
+          "$12.24"
+        ],
+        [
+          "2026-09-30",
+          "$10.00",
+          "$7.66",
+          1,
+          "$30.64"
+        ]
+      ],
+      "week": [
+        [
+          "2026-10-26",
+          "$38.50",
+          "$31.48",
+          2,
+          "$29.15"
+        ],
+        [
+          "2026-10-19",
+          "$16.00",
+          "$9.86",
+          2,
+          "$10.75"
+        ],
+        [
+          "2026-09-28",
+          "$10.00",
+          "$7.66",
+          1,
+          "$30.64"
+        ]
+      ],
+      "month": [
+        [
+          "2026-10",
+          "$54.50",
+          "$41.34",
+          4,
+          "$20.70"
+        ],
+        [
+          "2026-09",
+          "$10.00",
+          "$7.66",
+          1,
+          "$30.64"
+        ]
+      ],
+      "year": [
+        [
+          "2026",
+          "$64.50",
+          "$49.00",
+          5,
+          "$21.81"
+        ]
+      ]
+    },
+    "archive_only": {
+      "day": [
+        [
+          "2026-10-29",
+          "$0.00",
+          "$0.00",
+          0,
+          "--"
+        ],
+        [
+          "2026-10-25",
+          "$7.00",
+          "$4.76",
+          1,
+          "$9.51"
+        ],
+        [
+          "2026-10-24",
+          "$9.00",
+          "$5.10",
+          1,
+          "$12.24"
+        ]
+      ],
+      "week": [
+        [
+          "2026-10-26",
+          "$0.00",
+          "$0.00",
+          0,
+          "--"
+        ],
+        [
+          "2026-10-19",
+          "$16.00",
+          "$9.86",
+          2,
+          "$10.75"
+        ]
+      ],
+      "month": [
+        [
+          "2026-10",
+          "$16.00",
+          "$9.86",
+          2,
+          "$10.75"
+        ]
+      ],
+      "year": [
+        [
+          "2026",
+          "$16.00",
+          "$9.86",
+          2,
+          "$10.75"
+        ]
+      ]
+    }
+  },
+  "float": [
+    {
+      "rate": null,
+      "target": 85,
+      "declined": 11,
+      "left": 4,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 4 more before you drop under 85%."
+    },
+    {
+      "rate": null,
+      "target": 90,
+      "declined": 11,
+      "left": -1,
+      "targetUsed": 90,
+      "state": "past",
+      "message": "NO FLOAT. You are 1 decline past your 90% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": null,
+      "target": 0,
+      "declined": 11,
+      "left": 4,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 4 more before you drop under 85%."
+    },
+    {
+      "rate": 100,
+      "target": 85,
+      "declined": 0,
+      "left": 15,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 15 more before you drop under 85%."
+    },
+    {
+      "rate": 100,
+      "target": 90,
+      "declined": 0,
+      "left": 10,
+      "targetUsed": 90,
+      "state": "ok",
+      "message": "OK. You can pass on 10 more before you drop under 90%."
+    },
+    {
+      "rate": 100,
+      "target": 0,
+      "declined": 0,
+      "left": 15,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 15 more before you drop under 85%."
+    },
+    {
+      "rate": 95,
+      "target": 85,
+      "declined": 5,
+      "left": 10,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 10 more before you drop under 85%."
+    },
+    {
+      "rate": 95,
+      "target": 90,
+      "declined": 5,
+      "left": 5,
+      "targetUsed": 90,
+      "state": "ok",
+      "message": "OK. You can pass on 5 more before you drop under 90%."
+    },
+    {
+      "rate": 95,
+      "target": 0,
+      "declined": 5,
+      "left": 10,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 10 more before you drop under 85%."
+    },
+    {
+      "rate": 90,
+      "target": 85,
+      "declined": 10,
+      "left": 5,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 5 more before you drop under 85%."
+    },
+    {
+      "rate": 90,
+      "target": 90,
+      "declined": 10,
+      "left": 0,
+      "targetUsed": 90,
+      "state": "none",
+      "message": "NO FLOAT. Your next decline drops you under 90%. Take what comes."
+    },
+    {
+      "rate": 90,
+      "target": 0,
+      "declined": 10,
+      "left": 5,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 5 more before you drop under 85%."
+    },
+    {
+      "rate": 89,
+      "target": 85,
+      "declined": 11,
+      "left": 4,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 4 more before you drop under 85%."
+    },
+    {
+      "rate": 89,
+      "target": 90,
+      "declined": 11,
+      "left": -1,
+      "targetUsed": 90,
+      "state": "past",
+      "message": "NO FLOAT. You are 1 decline past your 90% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 89,
+      "target": 0,
+      "declined": 11,
+      "left": 4,
+      "targetUsed": 85,
+      "state": "ok",
+      "message": "OK. You can pass on 4 more before you drop under 85%."
+    },
+    {
+      "rate": 87.5,
+      "target": 85,
+      "declined": 13,
+      "left": 2,
+      "targetUsed": 85,
+      "state": "low",
+      "message": "LOW. 2 declines left before you drop under 85%."
+    },
+    {
+      "rate": 87.5,
+      "target": 90,
+      "declined": 13,
+      "left": -3,
+      "targetUsed": 90,
+      "state": "past",
+      "message": "NO FLOAT. You are 3 declines past your 90% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 87.5,
+      "target": 0,
+      "declined": 13,
+      "left": 2,
+      "targetUsed": 85,
+      "state": "low",
+      "message": "LOW. 2 declines left before you drop under 85%."
+    },
+    {
+      "rate": 85,
+      "target": 85,
+      "declined": 15,
+      "left": 0,
+      "targetUsed": 85,
+      "state": "none",
+      "message": "NO FLOAT. Your next decline drops you under 85%. Take what comes."
+    },
+    {
+      "rate": 85,
+      "target": 90,
+      "declined": 15,
+      "left": -5,
+      "targetUsed": 90,
+      "state": "past",
+      "message": "NO FLOAT. You are 5 declines past your 90% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 85,
+      "target": 0,
+      "declined": 15,
+      "left": 0,
+      "targetUsed": 85,
+      "state": "none",
+      "message": "NO FLOAT. Your next decline drops you under 85%. Take what comes."
+    },
+    {
+      "rate": 80,
+      "target": 85,
+      "declined": 20,
+      "left": -5,
+      "targetUsed": 85,
+      "state": "past",
+      "message": "NO FLOAT. You are 5 declines past your 85% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 80,
+      "target": 90,
+      "declined": 20,
+      "left": -10,
+      "targetUsed": 90,
+      "state": "past",
+      "message": "NO FLOAT. You are 10 declines past your 90% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 80,
+      "target": 0,
+      "declined": 20,
+      "left": -5,
+      "targetUsed": 85,
+      "state": "past",
+      "message": "NO FLOAT. You are 5 declines past your 85% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 70,
+      "target": 85,
+      "declined": 30,
+      "left": -15,
+      "targetUsed": 85,
+      "state": "past",
+      "message": "NO FLOAT. You are 15 declines past your 85% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 70,
+      "target": 90,
+      "declined": 30,
+      "left": -20,
+      "targetUsed": 90,
+      "state": "past",
+      "message": "NO FLOAT. You are 20 declines past your 90% target. Accept offers until old declines roll off the last 100."
+    },
+    {
+      "rate": 70,
+      "target": 0,
+      "declined": 30,
+      "left": -15,
+      "targetUsed": 85,
+      "state": "past",
+      "message": "NO FLOAT. You are 15 declines past your 85% target. Accept offers until old declines roll off the last 100."
+    }
+  ],
+  "analytics": {
+    "zones": [
+      [
+        "Menifee",
+        1,
+        "$30.64",
+        "$1.92"
+      ],
+      [
+        "Murrieta",
+        1,
+        "$29.89",
+        "$2.46"
+      ],
+      [
+        "Temecula",
+        2,
+        "$13.55",
+        "$1.24"
+      ]
+    ],
+    "hours": [
+      [
+        "12am",
+        1,
+        "$15.98"
+      ],
+      [
+        "9am",
+        1,
+        "$27.18"
+      ],
+      [
+        "12pm",
+        2,
+        "$22.98"
+      ],
+      [
+        "2pm",
+        1,
+        "$29.89"
+      ],
+      [
+        "6pm",
+        1,
+        "$9.51"
+      ]
+    ],
+    "months": [
+      [
+        "2026-11",
+        2,
+        "$17.00",
+        "8",
+        "$14.32",
+        "$5.60"
+      ],
+      [
+        "2026-10",
+        4,
+        "$56.50",
+        "20",
+        "$46.24",
+        "$14.07"
+      ],
+      [
+        "2026-09",
+        1,
+        "$10.00",
+        "4",
+        "$7.66",
+        "$2.80"
+      ]
+    ],
+    "tax": [
+      "$83.50",
+      "32.1",
+      "$22.47",
+      "$61.03"
+    ]
+  },
+  "statements": {
+    "parse": {
+      "canonical": {
+        "k": "2026-10",
+        "total": 1234.56,
+        "n": 123
+      },
+      "no_count": {
+        "k": "2026-11",
+        "total": 88,
+        "n": 0
+      },
+      "missing_total": null,
+      "missing_month": null,
+      "lowercase_month": null,
+      "month_without_year": null,
+      "double_space_month": null,
+      "total_on_next_line": {
+        "k": "2027-01",
+        "total": 1000,
+        "n": 7
+      },
+      "total_one_decimal": null,
+      "total_whole_dollars": null,
+      "december": {
+        "k": "2026-12",
+        "total": 0.99,
+        "n": 0
+      },
+      "large_count": {
+        "k": "2026-10",
+        "total": 10,
+        "n": 10000
+      },
+      "reordered": {
+        "k": "2026-05",
+        "total": 55.55,
+        "n": 9
+      },
+      "trailing_text": {
+        "k": "2026-10",
+        "total": 1234.56,
+        "n": 123
+      },
+      "month_january": {
+        "k": "2026-01",
+        "total": 1,
+        "n": 0
+      },
+      "month_february": {
+        "k": "2026-02",
+        "total": 1,
+        "n": 0
+      },
+      "month_march": {
+        "k": "2026-03",
+        "total": 1,
+        "n": 0
+      },
+      "month_april": {
+        "k": "2026-04",
+        "total": 1,
+        "n": 0
+      },
+      "month_may": {
+        "k": "2026-05",
+        "total": 1,
+        "n": 0
+      },
+      "month_june": {
+        "k": "2026-06",
+        "total": 1,
+        "n": 0
+      },
+      "month_july": {
+        "k": "2026-07",
+        "total": 1,
+        "n": 0
+      },
+      "month_august": {
+        "k": "2026-08",
+        "total": 1,
+        "n": 0
+      },
+      "month_september": {
+        "k": "2026-09",
+        "total": 1,
+        "n": 0
+      },
+      "month_october": {
+        "k": "2026-10",
+        "total": 1,
+        "n": 0
+      },
+      "month_november": {
+        "k": "2026-11",
+        "total": 1,
+        "n": 0
+      },
+      "month_december": {
+        "k": "2026-12",
+        "total": 1,
+        "n": 0
+      }
+    },
+    "allocations": [
+      {
+        "id": "three_rows",
+        "rows": [
+          {
+            "payout": "16.67",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "33.33",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "50.00",
+            "miles": "5.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "miles_split",
+        "rows": [
+          {
+            "payout": "62.63",
+            "miles": "10.0",
+            "changed": true
+          },
+          {
+            "payout": "187.87",
+            "miles": "30.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "no_statement",
+        "rows": [
+          {
+            "payout": "7.00",
+            "miles": "5.0",
+            "changed": false
+          },
+          {
+            "payout": "7.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "b1_shortcut_ignored",
+        "rows": [
+          {
+            "payout": "333.33",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "666.67",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "250.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "tie_remainder",
+        "rows": [
+          {
+            "payout": "33.34",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "33.33",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "33.33",
+            "miles": "5.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "two_months_one_statement",
+        "rows": [
+          {
+            "payout": "100.00",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "7.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "miles_zero",
+        "rows": [
+          {
+            "payout": "12.50",
+            "miles": "5.0",
+            "changed": true
+          },
+          {
+            "payout": "37.51",
+            "miles": "5.0",
+            "changed": true
+          }
+        ]
+      },
+      {
+        "id": "shortcut_only_month",
+        "rows": [
+          {
+            "payout": "12.00",
+            "miles": "5.0",
+            "changed": false
+          }
+        ]
+      },
+      {
+        "id": "blank_minutes_derived",
+        "rows": [
+          {
+            "payout": "46.90",
+            "miles": "9.4",
+            "changed": true
+          },
+          {
+            "payout": "53.10",
+            "miles": "10.6",
+            "changed": true
+          }
+        ]
+      }
+    ],
+    "store": [
+      {
+        "id": "fresh_two_statements",
+        "statements": [
+          [
+            "2026-10",
+            1234.56,
+            123
+          ],
+          [
+            "2026-12",
+            0.99,
+            0
+          ]
+        ],
+        "monthly": [
+          [
+            "2026-10",
+            1234.56,
+            0
+          ],
+          [
+            "2026-12",
+            0.99,
+            0
+          ]
+        ]
+      },
+      {
+        "id": "reimport_preserves_miles",
+        "statements": [
+          [
+            "2026-10",
+            1234.56,
+            123
+          ]
+        ],
+        "monthly": [
+          [
+            "2026-10",
+            1234.56,
+            42
+          ]
+        ]
+      },
+      {
+        "id": "unreadable_changes_nothing",
+        "statements": [],
+        "monthly": [
+          [
+            "2026-10",
+            50,
+            42
+          ]
+        ]
+      }
+    ]
+  }
+}
