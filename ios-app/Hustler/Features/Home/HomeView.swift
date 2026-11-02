@@ -9,6 +9,7 @@ struct HomeView: View {
     var onOpenStatements: () -> Void = {}
 
     @StateObject private var model = HomeViewModel()
+    @StateObject private var analytics = AnalyticsViewModel()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,7 +43,10 @@ struct HomeView: View {
         }
         .navigationTitle("Home")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { model.reload() }
+        .onAppear {
+            model.reload()
+            analytics.reload()
+        }
     }
 
     private var periods: some View {
@@ -127,6 +131,8 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
                 }
+
+                AnalyticsPanels(model: analytics)
             }
             .listStyle(.plain)
         }
