@@ -36,6 +36,9 @@ final class HomeViewModel: ObservableObject {
     /// The decline-float card, or nil when the log is unreadable.
     @Published private(set) var floatCard: HomeFloat.Card?
 
+    /// The weekly-quests card, between the float card and the period block.
+    @Published private(set) var questCard: Quests.Card?
+
     /// The "Start here" card above the Scoreboard, or nil when the log is unreadable.
     @Published private(set) var startCard: HomeStartCard.Card?
 
@@ -106,12 +109,14 @@ final class HomeViewModel: ObservableObject {
             floatCard = nil
             startCard = nil
             masterCard = nil
+            questCard = nil
             return
         }
 
         let ordered = MasterLog.orderedForAnalysis(rows)
         floatCard = HomeFloat.card(rows: ordered)
         masterCard = HomeMasterTile.card(rows: ordered)
+        questCard = Quests.card(rows: ordered, settings: settings, clock: clock)
         // No acceptance rate is stored yet, so that step stays open.
         startCard = HomeStartCard.card(
             rows: ordered,

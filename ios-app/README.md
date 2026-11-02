@@ -219,7 +219,7 @@ month — which is the month statement reconciliation will allocate them under.
 
 ## What is deliberately NOT ported yet
 
-Quests, the California pay guarantee, settings persistence,
+The California pay guarantee, settings persistence,
 handoff, deep links, and every screen beyond the app shell and Statements. The
 only persisted artefacts are the master log and the statements; there is no
 settings file yet, so nothing outside the statement summary reads a stored
