@@ -36,6 +36,12 @@ final class HomeViewModel: ObservableObject {
     /// The decline-float card, or nil when the log is unreadable.
     @Published private(set) var floatCard: HomeFloat.Card?
 
+    /// The "Start here" card above the Scoreboard, or nil when the log is unreadable.
+    @Published private(set) var startCard: HomeStartCard.Card?
+
+    /// The master-file tile above the Scoreboard; shown even with no log yet.
+    @Published private(set) var masterCard: HomeMasterTile.Card?
+
     /// False before the first master log exists, which is the empty state.
     @Published private(set) var hasLog = false
 
@@ -46,6 +52,7 @@ final class HomeViewModel: ObservableObject {
     private let clock: HomeClock
     private let settings: VerdictSettings
     private var rows: [LogRow] = []
+    private var statementMonths: [String] = []
     private var board: HomePeriodBoard?
 
     init(
@@ -87,6 +94,7 @@ final class HomeViewModel: ObservableObject {
         logUnavailable = problem
         hasLog = library.log.rowCount > 0
         rows = problem == nil ? MasterLogParser.parse(library.log.text) : []
+        statementMonths = Array(library.statements.statements.keys)
         rebuild()
     }
 
@@ -96,10 +104,21 @@ final class HomeViewModel: ObservableObject {
             buckets = []
             selectedKey = ""
             floatCard = nil
+            startCard = nil
+            masterCard = nil
             return
         }
 
-        floatCard = HomeFloat.card(rows: MasterLog.orderedForAnalysis(rows))
+        let ordered = MasterLog.orderedForAnalysis(rows)
+        floatCard = HomeFloat.card(rows: ordered)
+        masterCard = HomeMasterTile.card(rows: ordered)
+        // No acceptance rate is stored yet, so that step stays open.
+        startCard = HomeStartCard.card(
+            rows: ordered,
+            statementMonths: statementMonths,
+            hasAcceptanceRate: false,
+            acceptanceRate: HomeFloat.defaultSettingsRate
+        )
 
         let next = HomePeriodBoard(rows: rows, period: period, clock: clock, settings: settings)
         board = next

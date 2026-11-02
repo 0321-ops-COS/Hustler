@@ -11,7 +11,7 @@ struct RootView: View {
     var body: some View {
         TabView(selection: $selection) {
             NavigationStack {
-                HomeView()
+                HomeView(onOpenStatements: { selection = .statements })
             }
             .tabItem { Label("Home", systemImage: "house") }
             .tag(Tab.home)
