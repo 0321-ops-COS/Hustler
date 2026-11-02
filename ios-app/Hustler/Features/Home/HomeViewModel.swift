@@ -36,6 +36,12 @@ final class HomeViewModel: ObservableObject {
     /// The decline-float card, or nil when the log is unreadable.
     @Published private(set) var floatCard: HomeFloat.Card?
 
+    /// "Followed the call" hero, from non-archive rows only.
+    @Published private(set) var hero = FollowedHero.compute([])
+
+    /// Level and XP bar: accepted deliveries across the whole log.
+    @Published private(set) var level = LevelProgress.compute(deliveries: 0)
+
     /// False before the first master log exists, which is the empty state.
     @Published private(set) var hasLog = false
 
@@ -96,10 +102,15 @@ final class HomeViewModel: ObservableObject {
             buckets = []
             selectedKey = ""
             floatCard = nil
+            hero = FollowedHero.compute([])
+            level = LevelProgress.compute(deliveries: 0)
             return
         }
 
-        floatCard = HomeFloat.card(rows: MasterLog.orderedForAnalysis(rows))
+        let ordered = MasterLog.orderedForAnalysis(rows)
+        floatCard = HomeFloat.card(rows: ordered)
+        hero = FollowedHero.compute(ordered)
+        level = LevelProgress.compute(rows: ordered)
 
         let next = HomePeriodBoard(rows: rows, period: period, clock: clock, settings: settings)
         board = next

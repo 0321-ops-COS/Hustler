@@ -29,6 +29,11 @@ struct HomeView: View {
         }
         .navigationTitle("Home")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                LevelBadge(level: model.level)
+            }
+        }
         .onAppear { model.reload() }
     }
 
@@ -41,6 +46,9 @@ struct HomeView: View {
             }
             .pickerStyle(.segmented)
             .padding([.horizontal, .top], 12)
+
+            FollowedHeroCard(hero: model.hero)
+                .padding([.horizontal, .top], 12)
 
             if let card = model.floatCard {
                 HomeFloatCard(card: card)
@@ -113,6 +121,62 @@ struct HomeView: View {
             }
             .listStyle(.plain)
         }
+    }
+}
+
+/// The "Followed the call" hero. `FollowedHero` owns the percent, the arc and
+/// the sentence; this view only draws them.
+private struct FollowedHeroCard: View {
+    let hero: FollowedHero
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .stroke(.quaternary, lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: hero.arcFraction)
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text(hero.ringText)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+            }
+            .frame(width: 92, height: 92)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Followed the call")
+                    .font(.title3.bold())
+                Text(hero.message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Level and XP bar in the navigation bar. `LevelProgress` owns the name, the
+/// fraction and both text lines.
+private struct LevelBadge: View {
+    let level: LevelProgress
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 3) {
+            Text(level.headerText)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            ProgressView(value: level.fraction)
+                .frame(width: 96)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(level.headerText)
+        .accessibilityValue(level.nextText)
     }
 }
 
