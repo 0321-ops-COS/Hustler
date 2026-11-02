@@ -1,16 +1,18 @@
 import Foundation
 
-/// The two files the app keeps. The raw value is the file name on disk, so the
+/// The files the app keeps. The raw value is the file name on disk, so the
 /// store and the code that names a file cannot disagree.
 public enum StoreArtefact: String, CaseIterable, Sendable {
     case masterLog = "master-log.json"
     case statements = "statements.json"
+    case settings = "settings.json"
 
     /// Lower-case noun used in messages.
     public var label: String {
         switch self {
         case .masterLog: return "master log"
         case .statements: return "statements"
+        case .settings: return "settings"
         }
     }
 }
@@ -171,8 +173,8 @@ public final class LocalStore {
     }
 }
 
-/// The in-memory state of both artefacts, and the only place that decides when a
-/// change becomes durable.
+/// The in-memory state of the log and statements, and the only place that decides
+/// when a change becomes durable.
 ///
 /// Load failures are held per artefact, so one bad file cannot reset or block the
 /// other. A save is committed to memory only after the write succeeded: if the
@@ -296,6 +298,10 @@ public final class LocalLibrary {
             log = MasterLogDocument(text: "")
         case .statements:
             statements = StatementBook()
+        case .settings:
+            // Settings have their own `SettingsStore`; this library only lifts
+            // the block, and the next load starts from the defaults.
+            break
         }
         statuses[artefact] = .missing
 
