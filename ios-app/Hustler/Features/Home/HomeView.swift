@@ -4,27 +4,40 @@ import HustlerCore
 /// Home: the web Scoreboard's period block. All values are `HomePeriodBoard` /
 /// `HomeTiles` results; this file only draws them.
 struct HomeView: View {
+    /// Both cards' buttons open Statements for now, as does the master tile's
+    /// Edit; the Log page is not built yet.
+    var onOpenStatements: () -> Void = {}
+
     @StateObject private var model = HomeViewModel()
 
     var body: some View {
-        Group {
-            if let problem = model.logUnavailable {
-                ContentUnavailableView {
-                    Label("Master log unavailable", systemImage: "exclamationmark.triangle")
-                } description: {
-                    Text(problem)
-                } actions: {
-                    Text("Open the Statements tab to keep a copy and start a new log.")
-                        .font(.footnote)
+        VStack(spacing: 0) {
+            if let card = model.startCard {
+                HomeStartCardView(card: card, onOpen: onOpenStatements)
+            }
+            if let card = model.masterCard {
+                HomeMasterTileView(card: card, onOpen: onOpenStatements)
+            }
+
+            Group {
+                if let problem = model.logUnavailable {
+                    ContentUnavailableView {
+                        Label("Master log unavailable", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(problem)
+                    } actions: {
+                        Text("Open the Statements tab to keep a copy and start a new log.")
+                            .font(.footnote)
+                    }
+                } else if !model.hasLog {
+                    ContentUnavailableView {
+                        Label("No master log yet", systemImage: "doc.text")
+                    } description: {
+                        Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Statements tab.")
+                    }
+                } else {
+                    periods
                 }
-            } else if !model.hasLog {
-                ContentUnavailableView {
-                    Label("No master log yet", systemImage: "doc.text")
-                } description: {
-                    Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Statements tab.")
-                }
-            } else {
-                periods
             }
         }
         .navigationTitle("Home")
@@ -113,6 +126,70 @@ struct HomeView: View {
             }
             .listStyle(.plain)
         }
+    }
+}
+
+/// The "Start here" checklist. Every title, detail and done state comes from
+/// `HomeStartCard`; this view only picks icons and layout.
+private struct HomeStartCardView: View {
+    let card: HomeStartCard.Card
+    let onOpen: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(card.title).font(.subheadline.weight(.semibold))
+            if let lead = card.lead {
+                Text(lead).font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(Array(card.steps.enumerated()), id: \.offset) { _, step in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: step.isDone ? "checkmark.circle.fill" : "circle")
+                        .font(.caption)
+                        .foregroundStyle(step.isDone ? Color.green : Color.secondary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(step.title).font(.caption)
+                        Text(step.detail).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if !step.action.isEmpty {
+                        Button(step.action, action: onOpen)
+                            .buttonStyle(.bordered)
+                            .controlSize(.mini)
+                    }
+                }
+            }
+            if let note = card.note {
+                Text(note).font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+}
+
+/// The master-file tile. The count and newest row are `HomeMasterTile`'s.
+private struct HomeMasterTileView: View {
+    let card: HomeMasterTile.Card
+    let onOpen: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(card.title).font(.subheadline.weight(.semibold))
+                Text(card.text).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Button("Edit", action: onOpen)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+        .padding(10)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+        .padding(.top, 8)
     }
 }
 
