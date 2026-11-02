@@ -43,11 +43,56 @@ struct HomeView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
 
+            if let card = model.floatCard {
+                HomeFloatCard(card: card)
+            }
+
             List(model.buckets) { bucket in
                 HomeBucketRow(bucket: bucket)
             }
             .listStyle(.plain)
         }
+    }
+}
+
+/// The coloured decline-float card. Colour comes from `HomeFloat.Tone`; this
+/// view only maps it to a `Color` and draws the text.
+private struct HomeFloatCard: View {
+    let card: HomeFloat.Card
+
+    private var tint: Color {
+        switch card.tone {
+        case .green: return .green
+        case .orange: return .orange
+        case .red: return .red
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(card.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(card.value)
+                    .font(.headline)
+                    .monospacedDigit()
+                    .foregroundStyle(tint)
+            }
+            Text(card.message)
+                .font(.footnote)
+            Text(card.caption)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(tint.opacity(0.35)))
+        .padding(.horizontal)
+        .padding(.bottom, 8)
+        .accessibilityElement(children: .combine)
     }
 }
 

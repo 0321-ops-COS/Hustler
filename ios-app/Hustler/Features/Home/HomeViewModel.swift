@@ -47,6 +47,9 @@ final class HomeViewModel: ObservableObject {
     /// Newest first, including the period containing `now` even when it is empty.
     @Published private(set) var buckets: [Bucket] = []
 
+    /// The decline-float card, or nil when the log is unreadable.
+    @Published private(set) var floatCard: HomeFloat.Card?
+
     /// False before the first master log exists, which is the empty state.
     @Published private(set) var hasLog = false
 
@@ -89,8 +92,11 @@ final class HomeViewModel: ObservableObject {
     private func rebuild() {
         guard logUnavailable == nil else {
             buckets = []
+            floatCard = nil
             return
         }
+
+        floatCard = HomeFloat.card(rows: MasterLog.orderedForAnalysis(rows))
 
         let totals = Scoreboard.periodTotals(rows, period: period, settings: settings)
 
