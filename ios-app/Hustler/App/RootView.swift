@@ -3,7 +3,7 @@ import SwiftUI
 /// App shell: Home reads the stored master log, Statements writes it.
 struct RootView: View {
     private enum Tab: Hashable {
-        case home, statements, settings
+        case home, check, statements, settings
     }
 
     @State private var selection: Tab = .home
@@ -15,6 +15,12 @@ struct RootView: View {
             }
             .tabItem { Label("Home", systemImage: "house") }
             .tag(Tab.home)
+
+            NavigationStack {
+                CheckView()
+            }
+            .tabItem { Label("Check", systemImage: "checkmark.seal") }
+            .tag(Tab.check)
 
             NavigationStack {
                 StatementImportView()
