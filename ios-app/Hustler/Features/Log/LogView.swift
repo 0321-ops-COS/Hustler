@@ -99,7 +99,7 @@ struct LogView: View {
 /// Thin adapter: republishes `LogPageModel` and supplies today's date.
 @MainActor
 final class LogViewModel: ObservableObject {
-    let page = LogPageModel(store: LocalStore(), today: Self.todayKey())
+    let page = LogPageModel(store: LocalStore(), today: LogViewModel.todayKey())
     func update(_ body: () -> Void) { objectWillChange.send(); body() }
     private static func todayKey() -> String {
         let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = "yyyy-MM-dd"

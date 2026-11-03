@@ -35,11 +35,21 @@ public struct HistoryPage: Equatable, Sendable {
     public var duplicatesHidden = 0
     /// `renderArch()` draws nothing at all with no rows left.
     public var isEmpty: Bool { tiles.isEmpty }
+
+    /// What the screen starts from, before `build` has run.
+    public static let empty = HistoryPage()
 }
 
 /// The fixed wording `renderArch()` writes above each table, pinned here so the
 /// screen only draws strings it is given.
 public enum HistoryCopy {
+    public static let title = "History"
+    /// The screen's empty state, shown when `HistoryPage.isEmpty`.
+    public static let emptyTitle = "No archive yet"
+    public static let emptyHint = "History is built from your DoorDash data archive. Import data_archive.zip on the Data page."
+    public static func duplicatesNote(_ count: Int) -> String {
+        "\(count) archive deliver\(count == 1 ? "y" : "ies") hidden as duplicates of logged offers."
+    }
     public static let monthTitle = "By month"
     public static let monthHeaders = ["Month", "Deliveries", "Avg pickup to drop"]
     public static let hourTitle = "By hour (your device time)"
