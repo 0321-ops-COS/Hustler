@@ -71,6 +71,23 @@ final class HistoryTests: XCTestCase {
         XCTAssertTrue(HistoryViewModel.build(archive: []).isEmpty, "no archive draws nothing")
     }
 
+    /// The screen's empty state: when the duplicate rule covers every archive
+    /// row, there is nothing to draw and `isEmpty` is what the view checks.
+    func testEveryRowHiddenDrawsNothingButStillCountsDuplicates() {
+        let archive = [row("2026-10-05 17:00", "2026-10-05 18:00", "2026-10-05 18:30", "Chipotle", 2)]
+        let log = [shortcut("2026-10-05 11:00", items: "2", choice: "Accepted")]
+
+        let page = HistoryViewModel.build(archive: archive, logRows: log, calendar: calendar())
+
+        XCTAssertTrue(page.isEmpty)
+        XCTAssertEqual(page.duplicatesHidden, 1)
+        XCTAssertTrue(page.tiles.isEmpty)
+        XCTAssertTrue(page.months.isEmpty)
+        XCTAssertTrue(page.hours.isEmpty)
+        XCTAssertTrue(page.weekdays.isEmpty)
+        XCTAssertTrue(page.stores.isEmpty)
+    }
+
     func testTopStoresKeepFirstSeenOrderOnATieAndStopAtTen() {
         let names = ["B", "A", "C", "D", "E", "F", "G", "H", "I", "J", "K"]
         let rows = names.map { row("2026-10-05 17:00", "2026-10-05 18:00", "2026-10-05 18:10", $0, 1) }

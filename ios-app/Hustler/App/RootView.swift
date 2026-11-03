@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// App shell: Home reads the stored master log, Statements writes it.
+/// App shell: Home reads the stored master log, Statements writes it,
+/// History reads the stored archive.
 struct RootView: View {
     private enum Tab: Hashable {
-        case home, check, whatIf, statements, settings
+        case home, history, check, whatIf, statements, settings
     }
 
     @State private var selection: Tab = .home
@@ -15,6 +16,12 @@ struct RootView: View {
             }
             .tabItem { Label("Home", systemImage: "house") }
             .tag(Tab.home)
+
+            NavigationStack {
+                HistoryView()
+            }
+            .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+            .tag(Tab.history)
 
             NavigationStack {
                 CheckView()
