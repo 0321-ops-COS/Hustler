@@ -94,6 +94,7 @@ final class CAEntriesTests: XCTestCase {
         XCTAssertEqual(base.thisWeek.estimate.milesSource, .fromLog)
         XCTAssertEqual(base.equation, "($20.28 × 1.5 h) + ($0.37 × 15 mi) = $35.97<br>"
                        + "$35.97 − $30.00 pay = $5.97 adjustment (never below $0)")
+        XCTAssertEqual(base.equationLines.count, 2)
 
         let projected = model(rows, extra: 10)
         XCTAssertEqual([projected.extraHours, projected.maxExtraHours], [10, 48])
@@ -114,6 +115,21 @@ final class CAEntriesTests: XCTestCase {
         XCTAssertEqual(entered.thisWeek.estimate.guarantee, 116.2, accuracy: 1e-9)
         XCTAssertEqual(entered.offersHint, "So far: 2 accepted offers this week; active time and miles entered by you.")
         XCTAssertEqual([entered.tableRows[3].soFar, entered.tableRows[4].soFar], ["$116.20", "$16.20"])
+    }
+    func testEntryDraftPrefillsStoresAndClearsOneWeek() {
+        let stored = settings([weekKey: CAWeekEntry(pay: 120.5, hours: 4, miles: 30)])
+        let draft = CAEntryDraft(weekKey: weekKey, entry: stored.caEntries[weekKey])
+        XCTAssertEqual(draft.input, CAEntryInput(pay: "120.5", hours: "4", miles: "30"))
+
+        let written = CAEntryDraft(weekKey: weekKey,
+                                   input: CAEntryInput(pay: " $90 ", hours: "2.5", miles: ""))
+            .applied(to: stored)
+        XCTAssertEqual(written.caEntries[weekKey], CAWeekEntry(pay: 90, hours: 2.5, miles: nil))
+
+        let blank = CAEntryDraft(weekKey: weekKey, input: CAEntryInput())
+        XCTAssertNil(blank.applied(to: stored).caEntries[weekKey])
+        XCTAssertTrue(CAEntryDraft.cleared(weekKey, in: stored).caEntries.isEmpty)
+        XCTAssertEqual(CAEntryDraft.cleared(weekKey, in: stored).caWage, stored.caWage)
     }
     func testRecentWeeksAreThePaceWindowWithAutoAndEnteredFigures() {
         let previous = "2026-10-19"

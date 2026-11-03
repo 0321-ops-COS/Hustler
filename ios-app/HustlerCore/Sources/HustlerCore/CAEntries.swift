@@ -22,6 +22,50 @@ public struct CAEntryInput: Equatable, Sendable {
     }
 }
 
+/// The entry sheet's state for one week: three text fields prefilled from the
+/// stored entry, plus the two settings writes the sheet makes. The web app has no
+/// per-week form of its own, so blank fields mean "no entry" and clearing removes
+/// the week, falling back to the log's figures.
+public struct CAEntryDraft: Equatable, Sendable {
+    public var weekKey: String
+    public var input: CAEntryInput
+
+    public init(weekKey: String, entry: CAWeekEntry? = nil) {
+        self.weekKey = weekKey
+        self.input = CAEntryInput(
+            pay: entry?.pay.map(JsNumber.description) ?? "",
+            hours: entry?.hours.map(JsNumber.description) ?? "",
+            miles: entry?.miles.map(JsNumber.description) ?? ""
+        )
+    }
+
+    public init(weekKey: String, input: CAEntryInput) {
+        self.weekKey = weekKey
+        self.input = input
+    }
+
+    /// Stores whichever fields parse; all-blank input removes the week instead of
+    /// writing zeros, which `caMerge()` would ignore anyway.
+    public func applied(to settings: AppSettings) -> AppSettings {
+        var updated = settings
+        let entry = CAWeekEntry(
+            pay: Money.parseOptional(input.pay),
+            hours: Money.parseOptional(input.hours),
+            miles: Money.parseOptional(input.miles)
+        )
+        updated.caEntries[weekKey] = entry.pay == nil && entry.hours == nil && entry.miles == nil
+            ? nil : entry
+        return updated
+    }
+
+    /// The web app's `data-wipe="ca"` for one week.
+    public static func cleared(_ weekKey: String, in settings: AppSettings) -> AppSettings {
+        var updated = settings
+        updated.caEntries[weekKey] = nil
+        return updated
+    }
+}
+
 /// `renderCA()` (`index.html:619-648`) as values instead of HTML; `CAPayGuarantee` does the maths.
 public struct CAGuaranteeViewModel: Equatable, Sendable {
     public struct TableRow: Equatable, Sendable {
@@ -52,6 +96,8 @@ public struct CAGuaranteeViewModel: Equatable, Sendable {
     /// The weeks `caPace()` counts, oldest first; the current week is included.
     public var recentWeeks: [Week]
     public var pace: CAPayGuarantee.Pace?
+    /// `equation` split on the `<br>` the web app draws.
+    public var equationLines: [String] { equation.components(separatedBy: "<br>") }
     /// `renderCA()` for `today` (`yyyy-MM-dd`); `extraHours` stands in for the
     /// slider and defaults to the pace's average week, capped by `CAMAX`.
     public static func make(

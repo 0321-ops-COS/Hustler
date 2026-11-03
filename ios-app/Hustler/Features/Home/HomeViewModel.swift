@@ -39,6 +39,15 @@ final class HomeViewModel: ObservableObject {
     /// The weekly-quests card, between the float card and the period block.
     @Published private(set) var questCard: Quests.Card?
 
+    /// The California pay-guarantee card, drawn after the period table.
+    @Published private(set) var caCard: CAGuaranteeViewModel?
+
+    /// The entry sheet's three fields for this week; `beginCAEntry()` prefills them.
+    @Published var caDraft = CAEntryInput()
+
+    /// A refused California-entry write, cleared by the next successful one.
+    @Published private(set) var caError: String?
+
     /// The "Start here" card above the Scoreboard, or nil when the log is unreadable.
     @Published private(set) var startCard: HomeStartCard.Card?
 
@@ -57,6 +66,8 @@ final class HomeViewModel: ObservableObject {
     private var rows: [LogRow] = []
     private var statementMonths: [String] = []
     private var board: HomePeriodBoard?
+    /// `nil` starts the slider at the pace's average week, as `renderCA()` does.
+    private var caExtraHours: Int?
 
     init(
         store: LocalStore = LocalStore(),
@@ -71,6 +82,9 @@ final class HomeViewModel: ObservableObject {
 
     var selectedBucket: Bucket? { buckets.first { $0.key == selectedKey } }
     var tiles: [HomeTiles.Tile] { selectedBucket?.tiles ?? [] }
+
+    /// The week the entry sheet writes.
+    var caWeekKey: String { PeriodGrouping.key(for: clock.dateText(), period: .week) }
 
     /// The period table's first column title, from `renderGame()`.
     var tableHeader: String { period == .week ? "Week of" : "Period" }
@@ -110,6 +124,7 @@ final class HomeViewModel: ObservableObject {
             startCard = nil
             masterCard = nil
             questCard = nil
+            caCard = nil
             return
         }
 
@@ -117,6 +132,12 @@ final class HomeViewModel: ObservableObject {
         floatCard = HomeFloat.card(rows: ordered)
         masterCard = HomeMasterTile.card(rows: ordered)
         questCard = Quests.card(rows: ordered, settings: settings, clock: clock)
+        caCard = CAGuaranteeViewModel.make(
+            rows: ordered,
+            settings: SettingsStore(store: store).settings,
+            today: clock.dateText(),
+            extraHours: caExtraHours
+        )
         // No acceptance rate is stored yet, so that step stays open.
         startCard = HomeStartCard.card(
             rows: ordered,
@@ -136,6 +157,46 @@ final class HomeViewModel: ObservableObject {
             )
         }
         selectedKey = next.selectedKey
+    }
+
+    // MARK: - California entries
+
+    /// Opens the sheet on this week's stored values.
+    func beginCAEntry() {
+        caError = nil
+        let stored = SettingsStore(store: store).settings
+        caDraft = CAEntryDraft(weekKey: caWeekKey, entry: stored.caEntries[caWeekKey]).input
+    }
+
+    /// Stores the three fields for this week; false means the write was refused.
+    @discardableResult
+    func saveCAEntry() -> Bool {
+        writeCA { CAEntryDraft(weekKey: caWeekKey, input: caDraft).applied(to: $0) }
+    }
+
+    /// Removes this week's entry, so the card uses the log's figures again.
+    @discardableResult
+    func clearCAWeek() -> Bool {
+        writeCA { CAEntryDraft.cleared(caWeekKey, in: $0) }
+    }
+
+    func setCAExtraHours(_ hours: Int) {
+        caExtraHours = hours
+        rebuild()
+    }
+
+    private func writeCA(_ change: (AppSettings) -> AppSettings) -> Bool {
+        let settingsStore = SettingsStore(store: store)
+        do {
+            try settingsStore.save(change(settingsStore.settings))
+            caError = nil
+            caExtraHours = nil
+            reload()
+            return true
+        } catch {
+            caError = error.localizedDescription
+            return false
+        }
     }
 
     private static func label(for key: String, period: PeriodGrouping.Period) -> String {
