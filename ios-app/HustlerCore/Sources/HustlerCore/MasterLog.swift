@@ -53,9 +53,13 @@ public enum MasterLog {
     /// Zone and Minutes columns — that is existing behaviour (defect B6),
     /// preserved here rather than silently "fixed".
     public static func csvToPipe(_ line: String) -> String? {
-        let columns = line
-            .components(separatedBy: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        pipeRow(columns: line.components(separatedBy: ","))
+    }
+
+    /// The column mapping `csvToPipe()` applies, exposed for rows that are
+    /// already split (the JSON offers path), so both produce the same pipe row.
+    public static func pipeRow(columns input: [String]) -> String? {
+        let columns = input.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         guard columns.count >= 9, startsWithISODate(columns[0]) else { return nil }
 
         func cell(_ index: Int) -> String {
