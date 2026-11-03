@@ -47,8 +47,63 @@ public enum ArchiveImporter {
 
         let table = try DeliveryCSV.parse(text)
 
-        // `toLog()`: start is eight minutes before pickup, so a single delivery's
-        // active window begins before the food was collected.
+        // Web `ARCH`: every row the delivery file yields, before `toLog()` drops
+        // non-positive intervals.
+        let archiveRows = table.deliveries.map {
+            ArchiveRow(
+                createdAt: $0.createdAt,
+                pickupAt: $0.pickupAt,
+                deliveredAt: $0.deliveredAt,
+                store: $0.store,
+                items: $0.items
+            )
+        }
+
+        let built = try logLines(
+            from: archiveRows,
+            estimatedPay: estimatedPay,
+            estimatedMilesPerHour: estimatedMilesPerHour
+        )
+        let lines = built.lines
+        let droppedIntervals = built.droppedIntervals
+
+        guard !lines.isEmpty else {
+            throw ArchiveImportError.nothingToImport
+        }
+
+        let retainedRows = MasterLog.rowCount(existingLog)
+        let merged = MasterLog.merge(current: existingLog, adding: lines.joined(separator: "\n"))
+        let mergedRows = MasterLog.rowCount(merged)
+        let newlyAdded = max(0, mergedRows - retainedRows)
+        let alreadyPresent = max(0, lines.count - newlyAdded)
+
+        let counts = ArchiveImportCounts(
+            rowsInspected: table.rowsInspected,
+            validRows: lines.count,
+            cancelledSkipped: table.cancelledSkipped,
+            missingDeliverySkipped: table.missingDeliverySkipped,
+            invalidSkipped: table.invalidSkipped,
+            droppedNonPositiveIntervals: droppedIntervals,
+            alreadyPresent: alreadyPresent,
+            newlyAdded: newlyAdded,
+            retainedRows: retainedRows
+        )
+
+        return ArchiveImportResult(mergedLog: merged, counts: counts, archiveRows: archiveRows)
+    }
+
+    /// `toLog()`'s row building: archive rows → master-log pipe lines.
+    ///
+    /// Shared by `prepare` and `rebuild`, so the ZIP import and the Settings
+    /// rebuild cannot disagree. A delivery's window starts eight minutes before
+    /// pickup, overlapping deliveries share the block's minutes equally, and
+    /// every stamp is written in `America/Los_Angeles` from the archive's
+    /// literal-Z UTC value — the web app's conversion, unchanged.
+    public static func logLines(
+        from rows: [ArchiveRow],
+        estimatedPay: Double = estimatedPayPerDelivery,
+        estimatedMilesPerHour: Double = estimatedMilesPerHour
+    ) throws -> (lines: [String], droppedIntervals: Int) {
         struct Timed {
             var start: Date
             var end: Date
@@ -61,21 +116,15 @@ public enum ArchiveImporter {
         var timed: [Timed] = []
         var droppedIntervals = 0
 
-        for (order, delivery) in table.deliveries.enumerated() {
-            let pickup = delivery.pickupAt ?? delivery.deliveredAt
+        for (order, row) in rows.enumerated() {
+            let pickup = row.pickupAt ?? row.deliveredAt
             let start = pickup.addingTimeInterval(-8 * 60)
-            guard delivery.deliveredAt > start else {
+            guard row.deliveredAt > start else {
                 droppedIntervals += 1
                 continue
             }
-            timed.append(Timed(
-                start: start,
-                end: delivery.deliveredAt,
-                pickup: pickup,
-                store: delivery.store,
-                items: delivery.items,
-                order: order
-            ))
+            timed.append(Timed(start: start, end: row.deliveredAt, pickup: pickup,
+                               store: row.store, items: row.items, order: order))
         }
 
         // JavaScript's sort is stable; the explicit input-order tiebreak keeps
@@ -130,41 +179,26 @@ public enum ArchiveImporter {
             lines.append(cells.joined(separator: ","))
         }
 
-        guard !lines.isEmpty else {
-            throw ArchiveImportError.nothingToImport
-        }
+        return (lines, droppedIntervals)
+    }
 
-        let retainedRows = MasterLog.rowCount(existingLog)
-        let merged = MasterLog.merge(current: existingLog, adding: lines.joined(separator: "\n"))
-        let mergedRows = MasterLog.rowCount(merged)
-        let newlyAdded = max(0, mergedRows - retainedRows)
-        let alreadyPresent = max(0, lines.count - newlyAdded)
-
-        let counts = ArchiveImportCounts(
-            rowsInspected: table.rowsInspected,
-            validRows: lines.count,
-            cancelledSkipped: table.cancelledSkipped,
-            missingDeliverySkipped: table.missingDeliverySkipped,
-            invalidSkipped: table.invalidSkipped,
-            droppedNonPositiveIntervals: droppedIntervals,
-            alreadyPresent: alreadyPresent,
-            newlyAdded: newlyAdded,
-            retainedRows: retainedRows
+    /// The web app's `#rebuildArch`: replace every archive row in the saved log
+    /// with rows rebuilt from the saved archive, keeping every other row. A
+    /// missing or unusable archive throws, so the caller's log is left alone.
+    public static func rebuild(
+        log: String,
+        archive: [ArchiveRow],
+        estimatedPay: Double = estimatedPayPerDelivery,
+        estimatedMilesPerHour: Double = estimatedMilesPerHour
+    ) throws -> ArchiveRebuild.Outcome {
+        guard !archive.isEmpty else { throw ArchiveRebuild.Failure.missingArchive }
+        let built = try logLines(
+            from: archive,
+            estimatedPay: estimatedPay,
+            estimatedMilesPerHour: estimatedMilesPerHour
         )
-
-        // Web `ARCH`: every row the delivery file yields, before `toLog()` drops
-        // non-positive intervals.
-        let archiveRows = table.deliveries.map {
-            ArchiveRow(
-                createdAt: $0.createdAt,
-                pickupAt: $0.pickupAt,
-                deliveredAt: $0.deliveredAt,
-                store: $0.store,
-                items: $0.items
-            )
-        }
-
-        return ArchiveImportResult(mergedLog: merged, counts: counts, archiveRows: archiveRows)
+        guard !built.lines.isEmpty else { throw ArchiveRebuild.Failure.unreadableArchive }
+        return try ArchiveRebuild.replacingArchiveRows(in: log, with: built.lines)
     }
 
     /// `Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", hourCycle: "h23" })`

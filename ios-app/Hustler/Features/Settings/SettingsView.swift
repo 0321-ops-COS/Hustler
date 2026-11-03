@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     @StateObject private var model = SettingsViewModel()
     @Environment(\.openURL) private var openURL
+    @State private var confirmingRebuild = false
 
     var body: some View {
         Form {
@@ -31,6 +32,7 @@ struct SettingsView: View {
                 }
             }
 
+            archiveRebuild
             pages
             if let message = model.message {
                 Section { Text(message).font(.footnote).foregroundStyle(.secondary) }
@@ -39,6 +41,31 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { Button("Save") { model.save() } }
+        .onAppear { model.refreshArchive() }
+        .confirmationDialog(
+            ArchiveRebuildCopy.confirmation,
+            isPresented: $confirmingRebuild,
+            titleVisibility: .visible
+        ) {
+            Button(ArchiveRebuildCopy.button) { model.rebuildArchive() }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private var archiveRebuild: some View {
+        Section {
+            Button(ArchiveRebuildCopy.button) {
+                if model.hasSavedArchive { confirmingRebuild = true } else { model.reportMissingArchive() }
+            }
+            if let message = model.archiveMessage {
+                Text(message).font(.footnote)
+                    .foregroundStyle(model.archiveMessageIsFailure ? Color.red : Color.secondary)
+            }
+        } header: {
+            Text(ArchiveRebuildCopy.title)
+        } footer: {
+            Text(ArchiveRebuildCopy.hint)
+        }
     }
 
     private func numberField(_ field: SettingsField) -> some View {
