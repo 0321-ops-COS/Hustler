@@ -31,10 +31,14 @@ struct HomeView: View {
                             .font(.footnote)
                     }
                 } else if !model.hasLog {
-                    ContentUnavailableView {
-                        Label("No master log yet", systemImage: "doc.text")
-                    } description: {
-                        Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Statements tab.")
+                    VStack(spacing: 0) {
+                        ContentUnavailableView {
+                            Label("No master log yet", systemImage: "doc.text")
+                        } description: {
+                            Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Statements tab.")
+                        }
+                        CaliforniaCardView(model: model)
+                            .padding(.horizontal)
                     }
                 } else {
                     periods
@@ -130,6 +134,12 @@ struct HomeView: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                }
+
+                Section {
+                    CaliforniaCardView(model: model)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
                 }
 
                 AnalyticsPanels(model: analytics)
