@@ -1,17 +1,17 @@
 # Hustler Native iOS — Audit and Build Plan
 
-> **Build status updated 2026-11-03** against the code on `freebuff/483e785a`
-> (head `73c53db`). The original audit's source inventory, calculations, risks,
+> **Build status updated 2026-11-03** against the code at `aeb5b62` (merge of
+> PR #42). The original audit's source inventory, calculations, risks,
 > migration decisions and verification plan remain the baseline; this file
 > records what the code now does.
 
 | Item | Current state |
 |---|---|
 | Repository | [0321-ops-COS/Hustler](https://github.com/0321-ops-COS/Hustler) |
-| Authorized branch | `freebuff/483e785a` (tracks `origin/freebuff/ce4b8907c250c30103d8993e`) |
-| Code checked | `73c53db`, 2026-11-03 |
+| Branch checked | `freebuff/f042ca7c`; the S4-1 work merged from `freebuff/76a5641d` |
+| Code checked | `aeb5b62`, 2026-11-03 |
 | Web app | Unchanged: `index.html`, `sw.js` and `manifest.webmanifest` |
-| Merge/deploy | No merge to `main` and no deployment authorized or performed |
+| Merge/deploy | Merged through PR #42 (merge commit `aeb5b62`, 2026-11-03); no deployment. The `main` ref could not be re-checked offline: local refs stop on 2026-10-28 (`origin/main` at PR #13) |
 
 A row is **done** only when the native screen exists and a core test covers its
 logic. Everything else is **partial**, with the missing piece named. Test counts
@@ -21,7 +21,7 @@ are test functions in the named file, not total assertions.
 
 | Web feature | Native screen | Core type | Tests | Status | What is left |
 |---|---|---|---|---|---|
-| `#dash` Start card, master tile, decline float, quests, day/week/month/year block, tiles, California card, verdict matrix, zone/hour/month/tax panels | `HomeView`, `AnalyticsPanels`, `CaliforniaCardView` | `HomeStartCard`, `HomeMasterTile`, `HomeFloat`, `Quests`, `HomePeriodBoard`, `HomeTiles`, `CAPayGuarantee`, `CAWeekEntry`, `CAGuaranteeViewModel`, `VerdictMatrix`, `Analytics` | HomeHeaderCardsTests (12), HomeFloatTests (9), QuestsTests (6), HomePeriodBoardTests (4), HomeTilesTests (8), CAPayGuaranteeTests (8), CAEntriesTests (7), VerdictMatrixTests (3), AnalyticsTests (9) | partial | The `#follow` ring card (`#follow`, `#followTxt`) and `#estNote` are not drawn. The followed percentage exists only as a `HomeTiles` tile, so the number is computed but the ring card is missing. |
+| `#dash` Start card, master tile, decline float, quests, day/week/month/year block, tiles, followed-the-call ring card and archive note, California card, verdict matrix, zone/hour/month/tax panels | `HomeView`, `AnalyticsPanels`, `CaliforniaCardView` | `HomeStartCard`, `HomeMasterTile`, `HomeFloat`, `Quests`, `HomeFollowCard`, `HomePeriodBoard`, `HomeTiles`, `CAPayGuarantee`, `CAWeekEntry`, `CAGuaranteeViewModel`, `VerdictMatrix`, `Analytics` | HomeHeaderCardsTests (12), HomeFloatTests (9), QuestsTests (6), HomeFollowCardTests (7), HomePeriodBoardTests (4), HomeTilesTests (8), CAPayGuaranteeTests (8), CAEntriesTests (7), VerdictMatrixTests (3), AnalyticsTests (9) | done | — |
 | `#calc` six-field offer check, log-rate helper, verdict card | `CheckView` | `CheckModel` | CheckModelTests (9) | done | — |
 | `#whatif` replay of the whole log under typed numbers | `WhatIfView` | `WhatIf` | WhatIfTests (5) | done | — |
 | `#data` offers log, monthly statements, DoorDash archive, master file, Delete data | `DataView` | `OffersImporter`, `DataPageCopy`, `DataDeleteAction`, `DataWipe`, `StatementImporter`, `ArchiveImporter` | OffersImportTests (5), DataPageTests (6), StatementImportTests (17), ArchiveImportTests (31), LocalStoreTests (18) | partial | Five delete actions, not six: `data-wipe="files"` (Delete saved original files) has no button, because the app never keeps the uploaded file. |
@@ -63,24 +63,24 @@ their definitions nor their current status can be checked from the code.
 
 | Item | Gate |
 |---|---|
-| Home "Followed the call" ring card and `#estNote` | Presentation only: `ScoreboardTotals.followedPercent` and `loggedOffers` already exist |
 | Settings Testing card; cloud sync; pull offers; deep links | Blocked on a backend decision, not on native work |
 | Device install | Signing and install on the user's iPhone; separate approval, no signing material in this public repository |
 
 ## Verification run for this update
 
-- `ios-app/tools/local-test.sh`: **274 tests, 0 failures** (Xcode toolchain on
-  macOS, 2026-11-03).
-- `node ios-app/tools/parity/drift.mjs`: **no drift**; all twelve checks passed
-  (verdict 16, money 9, acceptance 3, period keys 10, scoreboard 2, period totals
-  16, float 27, analytics, statements 19/7, allocations 9, store 3).
+- `ios-app/tools/local-test.sh`: **281 tests, 0 failures** (Xcode toolchain on
+  macOS, 2026-11-03). The 7 new functions are `HomeFollowCardTests`.
+- `node ios-app/tools/parity/drift.mjs`: **no drift**, exit 0; all eleven checks
+  passed (verdict 16, money 9, acceptance 3, period keys 10, scoreboard 2, period
+  totals 16, float 27, analytics 3 zones / 5 hours / 3 months / 1 tax panel,
+  statements 19 parsed + 7 rejected, allocations 9, store 3).
 - Not verified: the SwiftUI target was not compiled here (the script tests the
   package only); no simulator or device run, no signing, no real DoorDash
   statement or archive.
 
 ## Handoff / verification rules
 
-- Work only on `freebuff/483e785a`; never merge to `main` or deploy without explicit authorization.
+- Work only on the branch you are given; never merge to `main` or deploy from a task branch. Any merge happens through the repository owner's PR.
 - Keep the existing web app unchanged unless a future milestone explicitly authorizes a web change.
 - Work only within the approved milestone. No unrelated cleanup or dependency/service spend.
 - Run applicable tests and parity drift checks. Report actual command results; do not infer success from source existing.

@@ -1,15 +1,16 @@
 # ios-app — Hustler native foundation
 
-**Status: all nine web tabs have a native screen — five done, four partial.**
+**Status: all nine web tabs have a native screen — six done, three partial.**
 Verdicts, acceptance rates, master-log parsing, the Scoreboard block (start
 card, master tile, weekly quests, decline float, day/week/month/year buckets,
-tiles, California guarantee, verdict matrix, zone/hour/month/tax panels),
+tiles, followed-the-call ring card and archive note, California guarantee,
+verdict matrix, zone/hour/month/tax panels),
 monthly statement import + reconciliation, offers-file and `data_archive.zip`
 import, the Check, What-if, Log, Earn, History, Handoff and Settings screens,
 and on-device settings, log, statement and CA-entry persistence are ported with
-tests pinned to observed web-app behaviour. The gaps are the Home "Followed the
-call" ring card and the backend-dependent items listed under "What is
-deliberately NOT ported yet"; there is no backend and no signing.
+tests pinned to observed web-app behaviour. The gaps are the backend-dependent
+items listed under "What is deliberately NOT ported yet"; there is no backend
+and no signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
@@ -52,6 +53,7 @@ deliberately NOT ported yet"; there is no backend and no signing.
 | Scoreboard tiles, formatted in the web's order | `HomeTiles` | `#stats`, `renderGame()` |
 | Start card and master-file tile wording and states | `HomeStartCard`, `HomeMasterTile` | `renderStart()`, `renderMaster()` |
 | Decline-float card tone, value and caption | `HomeFloat` | `renderFloat()` |
+| Followed-the-call ring card and the archive note under the tiles | `HomeFollowCard` | `#follow`, `#followTxt`, `#estNote` in `renderGame()` |
 | Verdict vs. what you did matrix | `VerdictMatrix`, `MatrixCell` | `#matrix` in `analyze()` |
 | Settings document, defaults, pins and the on-device settings file | `AppSettings`, `PagePins`, `SettingsStore` | `DEF`, `CFG`, `PIN`, `saveSet` |
 | Numeric setting parsing and rejection messages | `SettingsField`, `SettingsEdit` | `DEF`, `LBL`, `num()` |
@@ -348,7 +350,7 @@ CI (`.github/workflows/ios.yml`):
 | Claim | Status |
 |---|---|
 | Source exists | Yes |
-| Core tests compile and pass | Proven locally via `tools/local-test.sh` (274 tests) and in CI |
+| Core tests compile and pass | Proven locally via `tools/local-test.sh` (281 tests, 0 failures, 2026-11-03) and in CI |
 | App compiles for iOS | Proven only by CI — the unsigned simulator build |
 | Statement import reachable in the app | Wired to the pipeline and compiled by CI; never launched by hand on a simulator or device |
 | Archive import reachable in the app | Wired and compiled by CI; never launched by hand, and never run against a real DoorDash archive |
