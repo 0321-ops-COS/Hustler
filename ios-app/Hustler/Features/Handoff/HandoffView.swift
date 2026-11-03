@@ -1,9 +1,10 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import UIKit
 import HustlerCore
-/// The web `#sync` Handoff card reduced to its two working buttons: export through
-/// the share sheet, import through the file picker. The AI brief, cloud sync and
-/// shortcut link-up cards are deliberately absent.
+/// The web `#sync` Handoff card reduced to its three working buttons: export
+/// through the share sheet, import through the file picker, and copy the AI
+/// brief. Cloud sync and shortcut link-up cards are deliberately absent.
 struct HandoffView: View {
     @StateObject private var model = HandoffModel()
     @State private var choosingFile = false
@@ -15,6 +16,7 @@ struct HandoffView: View {
                     ShareLink(item: url) { Label("Export handoff file", systemImage: "square.and.arrow.up") }
                 }
                 Button("Import file", systemImage: "square.and.arrow.down") { choosingFile = true }
+                Button("Copy AI brief", systemImage: "doc.on.doc") { model.copyBrief() }
             } header: {
                 Text("Handoff")
             } footer: {
@@ -99,6 +101,17 @@ final class HandoffModel: ObservableObject {
             text: "Imported \(rows)" + (settingsChanged ? " and your settings." : "; settings unchanged."),
             isFailure: false
         )
+    }
+
+    /// `#cpBrief`: `AIBrief` builds the text; this only puts it on the
+    /// clipboard and shows the web app's confirmation.
+    func copyBrief() {
+        if settingsStore.isUnavailable {
+            notice = Notice(text: "Saved settings could not be read. Nothing has been replaced; fix them under Settings first.", isFailure: true)
+            return
+        }
+        UIPasteboard.general.string = AIBrief.copyText(settings: settingsStore.settings, log: library.log.text)
+        notice = Notice(text: "AI brief copied", isFailure: false)
     }
 
     func reportFailure(_ error: Error) {
