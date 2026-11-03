@@ -114,9 +114,14 @@ public struct ArchiveImportCounts: Equatable, Sendable {
 public struct ArchiveImportResult: Equatable, Sendable {
     public var mergedLog: String
     public var counts: ArchiveImportCounts
+    /// The `ARCH` rows the web app keeps beside the log, for the History page.
+    /// They are every usable delivery, including ones `toLog()` drops because
+    /// their interval is not positive.
+    public var archiveRows: [ArchiveRow]
 
-    public init(mergedLog: String, counts: ArchiveImportCounts) {
+    public init(mergedLog: String, counts: ArchiveImportCounts, archiveRows: [ArchiveRow] = []) {
         self.mergedLog = mergedLog
         self.counts = counts
+        self.archiveRows = archiveRows
     }
 }
