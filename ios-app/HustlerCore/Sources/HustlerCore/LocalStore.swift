@@ -255,6 +255,28 @@ public final class LocalLibrary {
         return document
     }
 
+    /// The Data page's deletes, through the same blocked-artefact rule as every
+    /// other write. Remove archive keeps every row the shortcut logged.
+    @discardableResult
+    public func clearLog() throws -> MasterLogDocument { try saveLog("") }
+
+    @discardableResult
+    public func removeArchiveRows() throws -> MasterLogDocument {
+        let kept = log.text.components(separatedBy: "\n").dropFirst(2)
+            .filter { !MasterLog.isArchiveLine($0) }
+        return try saveLog(kept.joined(separator: "\n"))
+    }
+
+    @discardableResult
+    public func clearStatements() throws -> StatementBook {
+        if isUnavailable(.statements) { throw LocalStore.Failure.blocked(.statements) }
+        let empty = StatementBook()
+        try store.save(StatementStoreDocument(book: empty), as: .statements)
+        statements = empty
+        statuses[.statements] = .loaded
+        return empty
+    }
+
     /// `takeStm()` and the write, committed together: the in-memory book moves
     /// only when the file did.
     @discardableResult
