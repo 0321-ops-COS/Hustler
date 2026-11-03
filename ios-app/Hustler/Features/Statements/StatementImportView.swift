@@ -116,6 +116,7 @@ struct StatementImportView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 Button("Save master log") { model.saveLog() }
+                NavigationLink("Open and edit master file") { LogView() }
                 LabeledContent("Rows", value: "\(model.logRowCount)")
                 LabeledContent("Archive rows", value: "\(model.logArchiveRowCount)")
             }
