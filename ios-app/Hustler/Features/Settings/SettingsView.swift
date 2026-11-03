@@ -13,6 +13,28 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Account") {
+                if model.isSignedIn {
+                    Button("Sign out") { model.signOut() }
+                    ForEach(model.accountSummary) { item in
+                        HStack {
+                            Text(item.key)
+                            Spacer()
+                            Text(item.line).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                } else {
+                    TextField("Email", text: $model.accountEmail)
+                        .keyboardType(.emailAddress)
+                    SecureField("Password", text: $model.accountPassword)
+                    Button("Sign in") { model.signIn() }
+                        .disabled(model.accountBusy || model.accountEmail.isEmpty || model.accountPassword.isEmpty)
+                }
+                if let message = model.accountMessage {
+                    Text(message).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+
             Section("Shortcut") {
                 Button("Run the offer analyzer") {
                     if let url = model.runShortcutURL { openURL(url) }

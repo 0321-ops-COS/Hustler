@@ -15,6 +15,15 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var archiveMessage: String?
     @Published private(set) var archiveMessageIsFailure = false
 
+    // Account (read-only): the session is Keychain-backed, never stored values.
+    @Published var accountEmail = ""
+    @Published var accountPassword = ""
+    @Published private(set) var accountSummary: [StoreKeySummary] = []
+    @Published private(set) var accountMessage: String?
+    @Published private(set) var accountBusy = false
+    @Published private(set) var isSignedIn = false
+
+    private let account = SupabaseAccount(storage: KeychainSessionStorage())
     private let store: LocalStore
     private let settingsStore: SettingsStore
 
@@ -24,6 +33,7 @@ final class SettingsViewModel: ObservableObject {
         settingsStore = loaded
         edit = SettingsEdit(loaded.settings)
         texts = Self.texts(for: loaded.settings)
+        isSignedIn = account.storedSession != nil
         if case let .unavailable(reason) = loaded.status { message = reason }
     }
 
@@ -91,6 +101,34 @@ final class SettingsViewModel: ObservableObject {
             message = error.localizedDescription
             return false
         }
+    }
+
+    /// The password stays in this field only: never saved, logged or put in a URL.
+    func signIn() {
+        let email = accountEmail.trimmingCharacters(in: .whitespaces)
+        guard !accountBusy, !email.isEmpty, !accountPassword.isEmpty else { return }
+        let password = accountPassword
+        accountBusy = true
+        accountMessage = nil
+        Task {
+            do {
+                try await account.signIn(email: email, password: password)
+                accountPassword = ""
+                isSignedIn = true
+                accountSummary = try await account.fetchSummary()
+            } catch {
+                accountMessage = error.localizedDescription
+            }
+            accountBusy = false
+        }
+    }
+
+    func signOut() {
+        account.signOut()
+        isSignedIn = false
+        accountSummary = []
+        accountMessage = nil
+        accountPassword = ""
     }
 
     private func reload() {
