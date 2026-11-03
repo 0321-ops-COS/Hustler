@@ -36,6 +36,9 @@ final class HomeViewModel: ObservableObject {
     /// The decline-float card, or nil when the log is unreadable.
     @Published private(set) var floatCard: HomeFloat.Card?
 
+    /// The "Followed the call" ring card for the whole log, or nil when unreadable.
+    @Published private(set) var followCard: HomeFollowCard.Card?
+
     /// The weekly-quests card, between the float card and the period block.
     @Published private(set) var questCard: Quests.Card?
 
@@ -121,6 +124,7 @@ final class HomeViewModel: ObservableObject {
             buckets = []
             selectedKey = ""
             floatCard = nil
+            followCard = nil
             startCard = nil
             masterCard = nil
             questCard = nil
@@ -130,6 +134,7 @@ final class HomeViewModel: ObservableObject {
 
         let ordered = MasterLog.orderedForAnalysis(rows)
         floatCard = HomeFloat.card(rows: ordered)
+        followCard = HomeFollowCard.card(rows: ordered)
         masterCard = HomeMasterTile.card(rows: ordered)
         questCard = Quests.card(rows: ordered, settings: settings, clock: clock)
         caCard = CAGuaranteeViewModel.make(
