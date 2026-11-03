@@ -59,7 +59,9 @@ struct SettingsView: View {
             ForEach(model.pages) { page in
                 HStack {
                     NavigationLink {
-                        if page.id == AppPage.data.id {
+                        if page.id == AppPage.earn.id {
+                            EarningsView()
+                        } else if page.id == AppPage.data.id {
                             DataView()
                         } else {
                             ComingSoonView(title: page.title)
