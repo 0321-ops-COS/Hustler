@@ -152,7 +152,19 @@ public enum ArchiveImporter {
             retainedRows: retainedRows
         )
 
-        return ArchiveImportResult(mergedLog: merged, counts: counts)
+        // Web `ARCH`: every row the delivery file yields, before `toLog()` drops
+        // non-positive intervals.
+        let archiveRows = table.deliveries.map {
+            ArchiveRow(
+                createdAt: $0.createdAt,
+                pickupAt: $0.pickupAt,
+                deliveredAt: $0.deliveredAt,
+                store: $0.store,
+                items: $0.items
+            )
+        }
+
+        return ArchiveImportResult(mergedLog: merged, counts: counts, archiveRows: archiveRows)
     }
 
     /// `Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", hourCycle: "h23" })`

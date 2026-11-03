@@ -205,6 +205,10 @@ final class StatementImportModel: ObservableObject {
             switch prepared {
             case let .success(result):
                 do {
+                    // The History page reads these; the log stays the source of
+                    // truth for money. Archive first, so a failed log write leaves
+                    // a re-import with nothing new to merge.
+                    try library.appendArchive(result.archiveRows)
                     try library.saveLog(result.mergedLog)
                     refresh()
                     archiveCounts = result.counts
