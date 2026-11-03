@@ -4,6 +4,9 @@ import HustlerCore
 /// The web `#settings` section: shortcut card, numeric fields and Pages card.
 /// Values and validation come from `SettingsEdit`; this file only lays them out.
 struct SettingsView: View {
+    /// Lets the shell redraw the tab bar as soon as a pin is switched.
+    var onPinsChanged: () -> Void = {}
+
     @StateObject private var model = SettingsViewModel()
     @Environment(\.openURL) private var openURL
 
@@ -59,15 +62,7 @@ struct SettingsView: View {
             ForEach(model.pages) { page in
                 HStack {
                     NavigationLink {
-                        if page.id == AppPage.earn.id {
-                            EarningsView()
-                        } else if page.id == AppPage.data.id {
-                            DataView()
-                        } else if page.id == AppPage.sync.id {
-                            HandoffView()
-                        } else {
-                            ComingSoonView(title: page.title)
-                        }
+                        AppScreenView(screen: page.screen)
                     } label: {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(page.title)
@@ -76,7 +71,10 @@ struct SettingsView: View {
                     }
                     Toggle("Show \(page.title) in menu", isOn: Binding(
                         get: { model.isPinned(page) },
-                        set: { model.setPinned(page, $0) }
+                        set: {
+                            model.setPinned(page, $0)
+                            onPinsChanged()
+                        }
                     ))
                     .labelsHidden()
                 }
@@ -89,7 +87,8 @@ struct SettingsView: View {
     }
 }
 
-/// No page in the Pages card is built yet, so every bar lands here.
+/// The screen for a page that has no view yet. Every `PGS` page is built, so
+/// nothing currently lands here, but a new page can without a dead link.
 struct ComingSoonView: View {
     let title: String
 
