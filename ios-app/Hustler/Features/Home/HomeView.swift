@@ -87,6 +87,10 @@ struct HomeView: View {
                 .padding(.top, 12)
             }
 
+            if let card = model.followCard {
+                HomeFollowCardView(card: card)
+            }
+
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                 ForEach(model.tiles) { tile in
                     VStack(alignment: .leading, spacing: 2) {
@@ -102,6 +106,15 @@ struct HomeView: View {
                 }
             }
             .padding([.horizontal, .top], 12)
+
+            if let note = model.followCard?.note, !note.isEmpty {
+                Text(note)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 6)
+            }
 
             List {
                 Section {
@@ -259,6 +272,39 @@ private struct QuestsCardView: View {
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal)
         .padding(.bottom, 8)
+    }
+}
+
+/// The "Followed the call" ring. The percent, sentence and ring fill are
+/// `HomeFollowCard.Card`'s; this view only strokes the ring.
+private struct HomeFollowCardView: View {
+    let card: HomeFollowCard.Card
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                Circle().strokeBorder(.quaternary, lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: card.ringFill)
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text(card.percentText)
+                    .font(.title2.weight(.bold))
+                    .monospacedDigit()
+            }
+            .frame(width: 84, height: 84)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(HomeFollowCard.title).font(.subheadline.weight(.semibold))
+                Text(card.text).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .accessibilityElement(children: .combine)
     }
 }
 
