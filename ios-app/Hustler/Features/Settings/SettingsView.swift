@@ -63,6 +63,8 @@ struct SettingsView: View {
                             EarningsView()
                         } else if page.id == AppPage.data.id {
                             DataView()
+                        } else if page.id == AppPage.sync.id {
+                            HandoffView()
                         } else {
                             ComingSoonView(title: page.title)
                         }
