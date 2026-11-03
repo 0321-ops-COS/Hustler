@@ -1,16 +1,20 @@
 import Foundation
 
-/// The two files the app keeps. The raw value is the file name on disk, so the
+/// The files the app keeps. The raw value is the file name on disk, so the
 /// store and the code that names a file cannot disagree.
 public enum StoreArtefact: String, CaseIterable, Sendable {
     case masterLog = "master-log.json"
     case statements = "statements.json"
+    case settings = "settings.json"
+    case archive = "archive.json"
 
     /// Lower-case noun used in messages.
     public var label: String {
         switch self {
         case .masterLog: return "master log"
         case .statements: return "statements"
+        case .settings: return "settings"
+        case .archive: return "archive"
         }
     }
 }
@@ -171,8 +175,8 @@ public final class LocalStore {
     }
 }
 
-/// The in-memory state of both artefacts, and the only place that decides when a
-/// change becomes durable.
+/// The in-memory state of the log and statements, and the only place that decides
+/// when a change becomes durable.
 ///
 /// Load failures are held per artefact, so one bad file cannot reset or block the
 /// other. A save is committed to memory only after the write succeeded: if the
@@ -194,6 +198,8 @@ public final class LocalLibrary {
 
     public private(set) var log: MasterLogDocument
     public private(set) var statements: StatementBook
+    /// `ARCH` rows for the History page; the log stays the source of truth.
+    public private(set) var archive: [ArchiveRow]
 
     private var statuses: [StoreArtefact: Status]
 
@@ -228,8 +234,21 @@ public final class LocalLibrary {
             statuses[.statements] = .unavailable(error.localizedDescription)
         }
 
+        var archive: [ArchiveRow] = []
+        do {
+            if let stored = try store.load([ArchiveRow].self, from: .archive) {
+                archive = stored
+                statuses[.archive] = .loaded
+            } else {
+                statuses[.archive] = .missing
+            }
+        } catch {
+            statuses[.archive] = .unavailable(error.localizedDescription)
+        }
+
         self.log = log
         self.statements = statements
+        self.archive = archive
         self.statuses = statuses
     }
 
@@ -251,6 +270,59 @@ public final class LocalLibrary {
         log = document
         statuses[.masterLog] = .loaded
         return document
+    }
+
+    /// The Data page's deletes, through the same blocked-artefact rule as every
+    /// other write. Remove archive keeps every row the shortcut logged.
+    @discardableResult
+    public func clearLog() throws -> MasterLogDocument { try saveLog("") }
+
+    @discardableResult
+    public func removeArchiveRows() throws -> MasterLogDocument {
+        try saveArchive([])
+        let kept = log.text.components(separatedBy: "\n").dropFirst(2)
+            .filter { !MasterLog.isArchiveLine($0) }
+        return try saveLog(kept.joined(separator: "\n"))
+    }
+
+    /// Replaces the archive store contents; the History page reads this. A
+    /// plain row array: a future format fails to decode and blocks the write,
+    /// so `LocalStore`'s never-overwrite rule still applies.
+    @discardableResult
+    public func saveArchive(_ rows: [ArchiveRow]) throws -> [ArchiveRow] {
+        try store.save(rows, as: .archive)
+        archive = rows
+        statuses[.archive] = .loaded
+        return rows
+    }
+
+    /// Adds only rows the store does not already hold, count-matched like
+    /// `MasterLog.merge`, so a re-import adds nothing and two identical
+    /// deliveries inside one archive both survive.
+    @discardableResult
+    public func appendArchive(_ rows: [ArchiveRow]) throws -> [ArchiveRow] {
+        var present: [ArchiveRow: Int] = [:]
+        for row in archive { present[row, default: 0] += 1 }
+
+        var added: [ArchiveRow] = []
+        var incoming: [ArchiveRow: Int] = [:]
+        for row in rows {
+            incoming[row, default: 0] += 1
+            if incoming[row, default: 0] <= (present[row] ?? 0) { continue }
+            added.append(row)
+        }
+
+        return try saveArchive(archive + added)
+    }
+
+    @discardableResult
+    public func clearStatements() throws -> StatementBook {
+        if isUnavailable(.statements) { throw LocalStore.Failure.blocked(.statements) }
+        let empty = StatementBook()
+        try store.save(StatementStoreDocument(book: empty), as: .statements)
+        statements = empty
+        statuses[.statements] = .loaded
+        return empty
     }
 
     /// `takeStm()` and the write, committed together: the in-memory book moves
@@ -296,6 +368,12 @@ public final class LocalLibrary {
             log = MasterLogDocument(text: "")
         case .statements:
             statements = StatementBook()
+        case .archive:
+            archive = []
+        case .settings:
+            // Settings have their own `SettingsStore`; this library only lifts
+            // the block, and the next load starts from the defaults.
+            break
         }
         statuses[artefact] = .missing
 

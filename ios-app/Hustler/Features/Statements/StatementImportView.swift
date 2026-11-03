@@ -14,6 +14,7 @@ struct StatementImportView: View {
     @StateObject private var model = StatementImportModel()
     @State private var choosingPDF = false
     @State private var choosingArchive = false
+    @State private var choosingOffers = false
 
     var body: some View {
         Form {
@@ -25,6 +26,7 @@ struct StatementImportView: View {
                 }
             }
 
+            offersSection
             statementsSection
             logSection
             archiveSection
@@ -47,6 +49,33 @@ struct StatementImportView: View {
             case let .failure(error):
                 model.reportFailure(error)
             }
+        }
+        .fileImporter(isPresented: $choosingOffers,
+                      allowedContentTypes: [.commaSeparatedText, .plainText, .json]) { result in
+            switch result {
+            case let .success(url): model.importOffers(at: url)
+            case let .failure(error): model.reportFailure(error)
+            }
+        }
+    }
+
+    // MARK: - Offers
+
+    @ViewBuilder
+    private var offersSection: some View {
+        Section {
+            Button("Choose an offers file", systemImage: "square.and.arrow.down") {
+                choosingOffers = true
+            }
+            if let counts = model.offersCounts {
+                LabeledContent("Rows in the file", value: "\(counts.rowsInspected)")
+                LabeledContent("New rows added", value: "\(counts.newlyAdded)")
+                LabeledContent("Skipped", value: "\(counts.skipped)")
+            }
+        } header: {
+            Text("Offers log")
+        } footer: {
+            Text("A .csv, .txt or .json file. New rows are merged into the master log; a missing header is added for you, and existing rows are never replaced or removed.")
         }
     }
 
@@ -116,6 +145,7 @@ struct StatementImportView: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                 Button("Save master log") { model.saveLog() }
+                NavigationLink("Open and edit master file") { LogView() }
                 LabeledContent("Rows", value: "\(model.logRowCount)")
                 LabeledContent("Archive rows", value: "\(model.logArchiveRowCount)")
             }

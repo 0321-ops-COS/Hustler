@@ -28,13 +28,16 @@ final class StatementImportModel: ObservableObject {
     @Published private(set) var notice: Notice?
     @Published private(set) var archiveCounts: ArchiveImportCounts?
     @Published private(set) var isImportingArchive = false
+    @Published private(set) var offersCounts: OffersImportCounts?
 
-    private let library: LocalLibrary
+    private let store: LocalStore
+    private var library: LocalLibrary
 
     init(store: LocalStore = LocalStore()) {
         let library = LocalLibrary(store: store)
         let problems = Self.problems(in: library)
 
+        self.store = store
         self.library = library
         self.log = library.log
         self.statements = library.statements
@@ -202,6 +205,10 @@ final class StatementImportModel: ObservableObject {
             switch prepared {
             case let .success(result):
                 do {
+                    // The History page reads these; the log stays the source of
+                    // truth for money. Archive first, so a failed log write leaves
+                    // a re-import with nothing new to merge.
+                    try library.appendArchive(result.archiveRows)
                     try library.saveLog(result.mergedLog)
                     refresh()
                     archiveCounts = result.counts
@@ -218,6 +225,61 @@ final class StatementImportModel: ObservableObject {
                 notice = Notice(text: error.localizedDescription, isFailure: true)
             }
         }
+    }
+
+    // MARK: - Offers file
+
+    /// Reads a .csv/.txt/.json offers file through `OffersImporter`, then saves
+    /// the merged log through `LocalLibrary`. A blocked or failed write leaves
+    /// the log and its file untouched, exactly like the archive import.
+    func importOffers(at url: URL) {
+        if let problem = logProblem {
+            notice = Notice(text: problem, isFailure: true)
+            return
+        }
+
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
+        guard let data = try? Data(contentsOf: url),
+              let text = String(data: data, encoding: .utf8)
+        else {
+            notice = Notice(text: "That file could not be read as UTF-8 text.", isFailure: true)
+            return
+        }
+
+        offersCounts = nil
+        switch OffersImporter.outcome(text: text, existingLog: log.text) {
+        case let .imported(result):
+            do {
+                try library.saveLog(result.mergedLog)
+                refresh()
+                let counts = result.counts
+                offersCounts = counts
+                notice = Notice(text: "Added \(counts.newlyAdded) row\(counts.newlyAdded == 1 ? "" : "s"); \(counts.skipped) skipped as already present or unreadable.", isFailure: false)
+            } catch {
+                notice = Notice(text: error.localizedDescription, isFailure: true)
+            }
+        case .empty:
+            notice = Notice(text: "That file is empty.", isFailure: true)
+        case .deliveryFile:
+            notice = Notice(text: "That is a DoorDash delivery file. Import it with Choose data_archive.zip.", isFailure: true)
+        case .unreadable:
+            notice = Notice(text: "No offer rows were found. Pipe rows need a date, payout and miles; CSV and JSON use the master log's columns.", isFailure: true)
+        }
+    }
+
+    /// Re-reads both files after the Data page changed them. Unsaved draft
+    /// edits go away because they no longer describe the stored log.
+    func reload() {
+        library = LocalLibrary(store: store)
+        log = library.log
+        statements = library.statements
+        unavailable = Self.problems(in: library)
+        logDraft = log.rowCount > 0 ? log.text : ""
+        archiveCounts = nil
+        offersCounts = nil
+        notice = nil
     }
 
     // MARK: - Explicit recovery

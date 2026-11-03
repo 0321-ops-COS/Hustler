@@ -1,70 +1,86 @@
 # Hustler Native iOS — Audit and Build Plan
 
-> **Build status updated 2026-10-28.** This file tracks implementation progress after the original audit supplied as `hustler-native-ios-audit.zip`. The original audit's source inventory, calculations, risks, migration decisions, and verification plan remain the baseline; this status update records what has actually been completed on the authorized feature branch.
+> **Build status updated 2026-11-03** against the code on `freebuff/483e785a`
+> (head `73c53db`). The original audit's source inventory, calculations, risks,
+> migration decisions and verification plan remain the baseline; this file
+> records what the code now does.
 
 | Item | Current state |
 |---|---|
 | Repository | [0321-ops-COS/Hustler](https://github.com/0321-ops-COS/Hustler) |
-| Authorized branch | `freebuff/ce4b8907c250c30103d8993e` |
-| Latest reported milestone commit | [`6b8141fe29edb649fecd43e66a38ea2a5d5eb35d`](https://github.com/0321-ops-COS/Hustler/commit/6b8141fe29edb649fecd43e66a38ea2a5d5eb35d) |
-| Web app | Preserved; no changes to `index.html`, `sw.js`, or `manifest.webmanifest` in M3 |
-| Merge/deploy | No merge to main and no deployment authorized or performed |
+| Authorized branch | `freebuff/483e785a` (tracks `origin/freebuff/ce4b8907c250c30103d8993e`) |
+| Code checked | `73c53db`, 2026-11-03 |
+| Web app | Unchanged: `index.html`, `sw.js` and `manifest.webmanifest` |
+| Merge/deploy | No merge to `main` and no deployment authorized or performed |
 
-## Completed
+A row is **done** only when the native screen exists and a core test covers its
+logic. Everything else is **partial**, with the missing piece named. Test counts
+are test functions in the named file, not total assertions.
 
-### M0 — Native foundation / toolchain
+## Status by web section
 
-Foundation exists under `ios-app/`, with an XcodeGen project spec and a Foundation-only Swift Package named `HustlerCore`. The app target is iOS 17+, iPhone-only. The project is generated rather than committing an `.xcodeproj`.
+| Web feature | Native screen | Core type | Tests | Status | What is left |
+|---|---|---|---|---|---|
+| `#dash` Start card, master tile, decline float, quests, day/week/month/year block, tiles, California card, verdict matrix, zone/hour/month/tax panels | `HomeView`, `AnalyticsPanels`, `CaliforniaCardView` | `HomeStartCard`, `HomeMasterTile`, `HomeFloat`, `Quests`, `HomePeriodBoard`, `HomeTiles`, `CAPayGuarantee`, `CAWeekEntry`, `CAGuaranteeViewModel`, `VerdictMatrix`, `Analytics` | HomeHeaderCardsTests (12), HomeFloatTests (9), QuestsTests (6), HomePeriodBoardTests (4), HomeTilesTests (8), CAPayGuaranteeTests (8), CAEntriesTests (7), VerdictMatrixTests (3), AnalyticsTests (9) | partial | The `#follow` ring card (`#follow`, `#followTxt`) and `#estNote` are not drawn. The followed percentage exists only as a `HomeTiles` tile, so the number is computed but the ring card is missing. |
+| `#calc` six-field offer check, log-rate helper, verdict card | `CheckView` | `CheckModel` | CheckModelTests (9) | done | — |
+| `#whatif` replay of the whole log under typed numbers | `WhatIfView` | `WhatIf` | WhatIfTests (5) | done | — |
+| `#data` offers log, monthly statements, DoorDash archive, master file, Delete data | `DataView` | `OffersImporter`, `DataPageCopy`, `DataDeleteAction`, `DataWipe`, `StatementImporter`, `ArchiveImporter` | OffersImportTests (5), DataPageTests (6), StatementImportTests (17), ArchiveImportTests (31), LocalStoreTests (18) | partial | Five delete actions, not six: `data-wipe="files"` (Delete saved original files) has no button, because the app never keeps the uploaded file. |
+| `#log` scope control, master-log editor, Analyze and save, Clear for today, demo, Paste copied rows, column check | `LogView` | `LogPageModel`, `LogCheck`, `LogScope` | LogPageTests (5), LogScopeTests (11), MasterLogCodecTests (12) | done | — (the web's hint text linking to Data is not reproduced; no control is missing) |
+| `#earn` statement tiles, month table, day bars, notes | `EarningsView` | `EarningsPage` | EarningsPageTests (4) | done | — |
+| `#hist` archive tiles, month/hour/weekday/store tables | `HistoryView` | `HistoryPage`, `HistoryViewModel`, `ArchiveRow`, `HistoryCopy` | HistoryTests (4) | done | — |
+| `#sync` Handoff card: export, import, Copy AI brief | `HandoffView` | `HandoffFile`, `HandoffImportPlan`, `AIBrief` | HandoffFileTests (6), AIBriefTests (5) | partial | The Cloud sync card and the Shortcut link-up card are absent, and nothing handles an incoming URL. The web app's app-icon card is unnecessary (the icon ships in the bundle). |
+| `#settings` Shortcut card, numeric fields, Rebuild archive rows, Pages | `SettingsView` | `AppSettings`, `SettingsStore`, `PagePins`, `SettingsField`, `SettingsEdit`, `AppPage`, `ShortcutRoute`, `ArchiveRebuild` | AppSettingsTests (5), SettingsEditingTests (4), ArchiveRebuildTests (5) | partial | The Testing card ("Send a test offer", "Test cloud connection") is absent. The numeric `DEF` fields are editable here and saved to `settings.json`; the web app keeps its `#fields` editor hidden, so the native tab exposes more than the web page. |
+| Nav tab bar and `PGS` / `applyPins()` page switches | `RootView` | `AppScreen`, `NavigationPlan` | NavigationTests (6) | done | — |
 
-### M1 — Verdict and money parity
+## Deliberately not ported
 
-The native core ports the offer verdict/ramp rules, acceptance logic, master-log normalization/merge and parsing, and JavaScript-compatible money formatting. Regression cases pin observed web behaviour.
+Every item below is **not planned** until a backend decision is made. The app is
+device-only: no account, no network, no paid service.
 
-### M2 — Scoreboard, periods, and decline float
-
-The native core ports Scoreboard totals, day/week/month/year grouping (Monday week starts), and decline-float states. The oracle compares rendered web-app outputs against native expectations.
-
-### M3 — Read-only analytics — complete
-
-Commit `6b8141fe29edb649fecd43e66a38ea2a5d5eb35d` adds the four remaining read-only analytics panels:
-- Zone breakdown: order count, net per active hour, net per mile; descending net/hour with stable tie ordering.
-- Hour breakdown: ascending hour buckets and the web app's 12-hour labels.
-- Month breakdown: newest month first, including miles and mileage deduction.
-- Tax estimate: accepted-row gross, business miles, flat configured mileage deduction, and taxable amount.
-
-The parity fixture exercises multiple explicit zones, multiple hours and months, a row with no time, an archive row with a blank Net cell, and a declined row. The oracle captures the web app's rendered tables; drift checks compare analytics sequences in order. Existing financial code and the web app were left untouched in M3.
-
-### Verification reported for M3
-
-- Local `tools/local-test.sh`: **56 tests, 0 failures** (Swift 6.0.3 on Linux).
-- Oracle drift: **no drift**; all eight sections passed, including analytics (3 zones, 5 hours, 3 months, 1 tax panel).
-- GitHub Actions on the M3 commit: **Parity drift**, **HustlerCore tests**, and **Build iOS app** all passed. Supabase Preview was skipped as a pre-existing check.
-- Not proven: a simulator run by a human, physical-device install, signing, or use on an actual shift.
-
-## Current build boundary
-
-M3 completes the read-only analytics port. The next substantial milestone is **B1: monthly statement import and reconciliation**. It changes how statement totals are allocated across log rows and is not yet ported. The audit identifies relevant existing web behaviour in `adjust(statements)`, `stmParse()`, and `takeStm()`; the native implementation must preserve that behaviour with golden tests before any UI is added.
-
-**Build is paused at the B1 decision gate.** The handoff notes explicitly say B1 must start with a decision, not code. Do not implement statement reconciliation until its migration choices are confirmed. In particular, confirm:
-1. Whether the native app should retain the master log as canonical pipe-table text (audit recommendation D1).
-2. Whether statement reconciliation must reproduce the web app's allocation/remainder behaviour exactly, including its edge cases.
-3. Whether the native app should support PDFKit page-one parsing with a paste-text fallback and no OCR (D4).
-4. Whether statement data remains local-only, consistent with the no-paid-services/no-backend constraint (D5).
-
-No real DoorDash archives, statements, or personal data belong in the repository.
-
-## Remaining roadmap
-
-| Milestone | Scope | Gate / notes |
+| Item | Web source | Why |
 |---|---|---|
-| B1 / M4 | Statement import, month reconciliation, allocation parity tests | **Blocked pending the decisions above. No code started.** |
-| Next | Archive / ZIP import and history | After B1; reproduce dedupe and time-zone quirks with fixtures. |
-| Later | Quests, California pay guarantee, persistence, handoff/deep links, and remaining screens | Keep each as a separately scoped milestone. No backend or paid service by default. |
-| Device install | Signing and install on the user's iPhone | Separate approval required; no signing material in this public repository. |
+| Cloud sync: sign-in, account storage, Sync now / Sign out | `#cloudCard`, `sb_*`, sync handlers | No backend decision yet. Settings, log and statements live in Application Support only. |
+| Pulling offers from the shortcut over the network | `pullOffers()`, the `visibilitychange` poll, `#pullOffers` | No backend decision yet. The surviving path is the shortcut copying its row and "Paste copied rows" in Log. |
+| Incoming deep links | `CFG.appUrl`, link entry into the app | No backend decision yet. Nothing in the app handles `onOpenURL`. |
+| Test offer and cloud test buttons | `#tstLink`, `#tstCloud` | Both test the backend link that does not exist; a device-only build has nothing to test. |
+| Deleting saved original files | `data-wipe="files"` | No backend decision yet. Originals were kept in an account folder on the web; the native import reads the picked file and writes only JSON documents, so there is nothing to delete (see `DataPage.swift`). |
+
+## Preserved defects
+
+- **B1**: statement reconciliation re-prices archive rows only, so accepted
+  shortcut pay in the same month is added on top of the statement total. Pinned
+  by `StatementReconcilerTests.b1_shortcut_ignored`.
+- **B6**: 15-column `shortcut` CSVs still lose Zone and Minutes in
+  `csvToPipe`. Pinned by `MasterLogCodecTests`.
+- **B11**: with no acceptance data the float still reports a number from the
+  default 89% instead of asking for a rate. Pinned by `DeclineFloatTests`.
+
+The other B-numbered defects named in the original audit (B2, B3, B5, B9, B10)
+are **unknown** here: that audit document is not in this repository, so neither
+their definitions nor their current status can be checked from the code.
+
+## Remaining work
+
+| Item | Gate |
+|---|---|
+| Home "Followed the call" ring card and `#estNote` | Presentation only: `ScoreboardTotals.followedPercent` and `loggedOffers` already exist |
+| Settings Testing card; cloud sync; pull offers; deep links | Blocked on a backend decision, not on native work |
+| Device install | Signing and install on the user's iPhone; separate approval, no signing material in this public repository |
+
+## Verification run for this update
+
+- `ios-app/tools/local-test.sh`: **274 tests, 0 failures** (Xcode toolchain on
+  macOS, 2026-11-03).
+- `node ios-app/tools/parity/drift.mjs`: **no drift**; all twelve checks passed
+  (verdict 16, money 9, acceptance 3, period keys 10, scoreboard 2, period totals
+  16, float 27, analytics, statements 19/7, allocations 9, store 3).
+- Not verified: the SwiftUI target was not compiled here (the script tests the
+  package only); no simulator or device run, no signing, no real DoorDash
+  statement or archive.
 
 ## Handoff / verification rules
 
-- Work only on `freebuff/ce4b8907c250c30103d8993e`; never merge to `main` or deploy without explicit authorization.
+- Work only on `freebuff/483e785a`; never merge to `main` or deploy without explicit authorization.
 - Keep the existing web app unchanged unless a future milestone explicitly authorizes a web change.
 - Work only within the approved milestone. No unrelated cleanup or dependency/service spend.
 - Run applicable tests and parity drift checks. Report actual command results; do not infer success from source existing.

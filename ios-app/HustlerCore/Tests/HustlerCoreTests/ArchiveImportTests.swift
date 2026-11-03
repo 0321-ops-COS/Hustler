@@ -99,6 +99,8 @@ final class ArchiveImportTests: XCTestCase {
         XCTAssertEqual(result.counts.alreadyPresent, 0)
         XCTAssertEqual(result.counts.retainedRows, 0)
         XCTAssertEqual(MasterLog.rowCount(result.mergedLog), 1)
+        XCTAssertEqual(result.archiveRows.map(\.store), ["Chipotle (Murrieta)"])
+        XCTAssertEqual(result.archiveRows.first?.items, 2)
     }
 
     func testEstimateParametersAreInjectable() throws {
@@ -426,6 +428,7 @@ final class ArchiveImportTests: XCTestCase {
         XCTAssertEqual(result.counts.droppedNonPositiveIntervals, 1)
         XCTAssertEqual(result.counts.validRows, 1)
         XCTAssertEqual(MasterLog.rowCount(result.mergedLog), 1)
+        XCTAssertEqual(result.archiveRows.count, 2, "the archive store keeps the row the log drops")
     }
 
     // MARK: - Counts
