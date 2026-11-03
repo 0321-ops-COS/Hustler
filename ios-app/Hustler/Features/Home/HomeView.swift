@@ -4,9 +4,9 @@ import HustlerCore
 /// Home: the web Scoreboard's period block. All values are `HomePeriodBoard` /
 /// `HomeTiles` results; this file only draws them.
 struct HomeView: View {
-    /// Both cards' buttons open Statements for now, as does the master tile's
-    /// Edit; the Log page is not built yet.
-    var onOpenStatements: () -> Void = {}
+    /// Both cards' buttons, and the master tile's Edit, open the Data tab,
+    /// which is where imports and the master-file link live.
+    var onOpenData: () -> Void = {}
 
     @StateObject private var model = HomeViewModel()
     @StateObject private var analytics = AnalyticsViewModel()
@@ -14,10 +14,10 @@ struct HomeView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let card = model.startCard {
-                HomeStartCardView(card: card, onOpen: onOpenStatements)
+                HomeStartCardView(card: card, onOpen: onOpenData)
             }
             if let card = model.masterCard {
-                HomeMasterTileView(card: card, onOpen: onOpenStatements)
+                HomeMasterTileView(card: card, onOpen: onOpenData)
             }
 
             Group {
@@ -27,7 +27,7 @@ struct HomeView: View {
                     } description: {
                         Text(problem)
                     } actions: {
-                        Text("Open the Statements tab to keep a copy and start a new log.")
+                        Text("Open the Data tab to keep a copy and start a new log.")
                             .font(.footnote)
                     }
                 } else if !model.hasLog {
@@ -35,7 +35,7 @@ struct HomeView: View {
                         ContentUnavailableView {
                             Label("No master log yet", systemImage: "doc.text")
                         } description: {
-                            Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Statements tab.")
+                            Text("Home totals come from the master log. Paste it, or import a DoorDash archive, in the Data tab.")
                         }
                         CaliforniaCardView(model: model)
                             .padding(.horizontal)
