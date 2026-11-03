@@ -1,21 +1,23 @@
 # ios-app — Hustler native foundation
 
-**Status: Milestone 5 (statement import in the app).** Verdicts, acceptance
-rates, master-log parsing, the Scoreboard totals, calendar bucketing, the
-decline float, the zone / hour / month / tax breakdowns, and monthly statement
-import + reconciliation are ported into `HustlerCore` with regression tests
-pinned to observed web-app behaviour. The statement pipeline is now reachable
-from the app, the master log and statements are stored on the device, and
-DoorDash `data_archive.zip` import is wired. There is still no settings
-persistence, no Supabase/backend, and no signing.
+**Status: all nine web tabs have a native screen — five done, four partial.**
+Verdicts, acceptance rates, master-log parsing, the Scoreboard block (start
+card, master tile, weekly quests, decline float, day/week/month/year buckets,
+tiles, California guarantee, verdict matrix, zone/hour/month/tax panels),
+monthly statement import + reconciliation, offers-file and `data_archive.zip`
+import, the Check, What-if, Log, Earn, History, Handoff and Settings screens,
+and on-device settings, log, statement and CA-entry persistence are ported with
+tests pinned to observed web-app behaviour. The gaps are the Home "Followed the
+call" ring card and the backend-dependent items listed under "What is
+deliberately NOT ported yet"; there is no backend and no signing.
 
 - Deployment target: iOS 17.0, iPhone only.
 - The Xcode project is generated from `project.yml` by [XcodeGen]; `.xcodeproj`
   is not committed.
 - `HustlerCore` is a dependency-free SwiftPM library: Foundation only, plus
   PDFKit for page-one statement text where that framework exists. No UI, no
-  clock, no network. Its one file-system type is `LocalStore`, and every test of
-  it runs against a temporary directory.
+  clock, no network. Its file-system types are `LocalStore` and `SettingsStore`,
+  and every test of them runs against a temporary directory.
 - `HustlerArchive` is a second target in the same package and the only place a
   third-party dependency appears: **ZIPFoundation 0.9.20** (MIT, no transitive
   dependencies on Apple platforms), pinned exactly. `HustlerCore` does not depend
@@ -41,6 +43,29 @@ persistence, no Supabase/backend, and no signing.
 | Import classification, month summaries, versioned store documents | `StatementImporter`, `StatementMonthSummary`, `StatementStoreDocument`, `MasterLogDocument` | new file-format layer, no web equivalent |
 | On-device files: blocked writes after a failed load, explicit recovery, commit only after a successful write | `LocalStore`, `LocalLibrary`, `StoreArtefact` | new file-format layer, no web equivalent |
 | DoorDash archive ZIP → delivery CSV → archive rows, overlap minutes, estimates, merge | `DeliveryArchiveFile`, `DeliveryCSV`, `ArchiveImporter` | `importZip()`, `loadDeliv()`, `toLog()` |
+| Check screen: six fields, log-rate helper, verdict card | `CheckModel` | `#calc`, the `c_go` handler |
+| What-if replay of the whole log under typed settings | `WhatIf` | `drawWf()`, `runWf`, `draft()` |
+| Weekly quests: targets from the last four existing weeks, streak, lifetime progress | `Quests` | `weekAggs()`, `QDEF`, `questState()`, `NICE()`, `renderQuests()` |
+| California guarantee: per-week figures, merge, pace and projection | `CAPayGuarantee` | `caAuto()`, `caMerge()`, `caEst()`, `caPace()`, `caProject()` |
+| CA week entries, entry-form parsing and the card's state | `CAWeekEntry`, `CAEntryInput`, `CAEntryDraft`, `CAGuaranteeViewModel` | `renderCA()`, `CA[k]` |
+| Scoreboard period block: buckets around today, slicing, selection | `HomePeriodBoard`, `HomePeriodBucket`, `HomeClock` | `renderGame()` period block |
+| Scoreboard tiles, formatted in the web's order | `HomeTiles` | `#stats`, `renderGame()` |
+| Start card and master-file tile wording and states | `HomeStartCard`, `HomeMasterTile` | `renderStart()`, `renderMaster()` |
+| Decline-float card tone, value and caption | `HomeFloat` | `renderFloat()` |
+| Verdict vs. what you did matrix | `VerdictMatrix`, `MatrixCell` | `#matrix` in `analyze()` |
+| Settings document, defaults, pins and the on-device settings file | `AppSettings`, `PagePins`, `SettingsStore` | `DEF`, `CFG`, `PIN`, `saveSet` |
+| Numeric setting parsing and rejection messages | `SettingsField`, `SettingsEdit` | `DEF`, `LBL`, `num()` |
+| Page list and its pin switches | `AppPage`, `ShortcutRoute` | `PGS`, `applyPins()` |
+| Tab bar order, pinned pages and per-screen titles | `AppScreen`, `NavigationPlan` | nav tabs, `PIN`, `applyPins()` |
+| Log Day/Week scope: keys, labels, split and save | `LogScope` | `dOf()`, `scKey()`, `logSplit()`, `scLabel()`, `scLoad()`, `scShow()`, `scSave()` |
+| Log page state: analyze/save, clear, demo, paste, column check | `LogPageModel`, `LogCheck` | `#log` handlers, `showCheck()` |
+| Offers-file import classification and counts | `OffersImporter`, `OffersImportResult`, `OffersImportCounts`, `OffersImportOutcome` | `ingest()`, `route()`, `csvRows()` |
+| Data page wording and the Delete data actions | `DataPageCopy`, `DataDeleteAction`, `DataWipe`, `DataWipeResult` | `#data`, `WIPE` |
+| Earnings page tiles, month table, day bars, notes | `EarningsPage` | `#earn`, `renderEarn()` |
+| History page tiles and archive tables | `HistoryPage`, `HistoryViewModel`, `ArchiveRow`, `HistoryCopy` | `#hist`, `renderArch()` |
+| Handoff export, import and its merge plan | `HandoffFile`, `HandoffImportPlan` | `#exp`, `#file2` |
+| AI brief text and its confirmation | `AIBrief` | `brief()`, `#cpBrief` |
+| Rebuild archive rows from the saved archive | `ArchiveRebuild`, `ArchiveRebuildCopy` | `#rebuildArch`, `toLog()` |
 
 Two populations are kept apart on purpose, because the web app measures them
 differently: **money, miles and hours** cover accepted rows only, while
@@ -81,8 +106,8 @@ that with a characterization test (`b1_shortcut_ignored`). Any fix is a separate
 approved change with before/after numbers.
 
 All of this stays on the device: no network, no account, no backend. The master
-log and the statement store are written to Application Support by the app layer
-(see below); `HustlerCore` itself performs no file I/O.
+log and the statement store are written to Application Support by `LocalStore`
+in `HustlerCore` (see below); no screen writes a file itself.
 
 ### Statement import in the app
 
@@ -219,11 +244,19 @@ month — which is the month statement reconciliation will allocate them under.
 
 ## What is deliberately NOT ported yet
 
-The California pay guarantee, settings persistence,
-handoff, deep links, and every screen beyond the app shell and Statements. The
-only persisted artefacts are the master log and the statements; there is no
-settings file yet, so nothing outside the statement summary reads a stored
-setting.
+Everything that needs a backend decision, and nothing else:
+
+- **Cloud sync** — sign-in, account storage, "Sync now", "Sign out".
+- **Pulling offers from the shortcut over the network** — the web app's
+  `pullOffers()` poll. The surviving path is "Paste copied rows" in Log.
+- **Incoming deep links** — nothing reads a URL into the app.
+- **Settings → Testing** — "Send a test offer" and "Test cloud connection".
+- **"Delete saved original files"** in Data — no original is ever kept, so
+  there is nothing to delete.
+
+The California pay guarantee, settings persistence and handoff are now ported.
+`settings.json` joins the master log and the statements on the device; nothing
+is stored anywhere else.
 
 The period *slicing* the Scoreboard does around "now" (last 10 days, 8 weeks,
 12 months) and the insertion of an empty current period are presentation and
@@ -233,9 +266,9 @@ clock concerns; the core returns buckets and lets the UI decide.
 still lose Zone and Minutes in `csvToPipe`, exactly as the web app does.
 **B11 is preserved**: with no acceptance data the float still reports a number
 from the default 89% instead of asking for a rate — `DeclineFloatTests` pins
-that behaviour so any future fix is a deliberate change. Other documented
-defects (B2, B3, B5, B9, B10) are untouched; see
-`docs/native-ios-audit-and-plan.md` §2.
+that behaviour so any future fix is a deliberate change. The other B-numbered
+defects in the original audit (B2, B3, B5, B9, B10) cannot be checked here —
+that audit is not in this repository — so their status is unknown.
 
 ## Verification without macOS minutes
 
@@ -315,7 +348,7 @@ CI (`.github/workflows/ios.yml`):
 | Claim | Status |
 |---|---|
 | Source exists | Yes |
-| Core tests compile and pass | Proven locally via `tools/local-test.sh` (131 tests) and in CI |
+| Core tests compile and pass | Proven locally via `tools/local-test.sh` (274 tests) and in CI |
 | App compiles for iOS | Proven only by CI — the unsigned simulator build |
 | Statement import reachable in the app | Wired to the pipeline and compiled by CI; never launched by hand on a simulator or device |
 | Archive import reachable in the app | Wired and compiled by CI; never launched by hand, and never run against a real DoorDash archive |
