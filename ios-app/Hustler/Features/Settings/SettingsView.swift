@@ -59,7 +59,11 @@ struct SettingsView: View {
             ForEach(model.pages) { page in
                 HStack {
                     NavigationLink {
-                        ComingSoonView(title: page.title)
+                        if page.id == AppPage.data.id {
+                            DataView()
+                        } else {
+                            ComingSoonView(title: page.title)
+                        }
                     } label: {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(page.title)

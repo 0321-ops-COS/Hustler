@@ -30,12 +30,14 @@ final class StatementImportModel: ObservableObject {
     @Published private(set) var isImportingArchive = false
     @Published private(set) var offersCounts: OffersImportCounts?
 
-    private let library: LocalLibrary
+    private let store: LocalStore
+    private var library: LocalLibrary
 
     init(store: LocalStore = LocalStore()) {
         let library = LocalLibrary(store: store)
         let problems = Self.problems(in: library)
 
+        self.store = store
         self.library = library
         self.log = library.log
         self.statements = library.statements
@@ -261,6 +263,19 @@ final class StatementImportModel: ObservableObject {
         case .unreadable:
             notice = Notice(text: "No offer rows were found. Pipe rows need a date, payout and miles; CSV and JSON use the master log's columns.", isFailure: true)
         }
+    }
+
+    /// Re-reads both files after the Data page changed them. Unsaved draft
+    /// edits go away because they no longer describe the stored log.
+    func reload() {
+        library = LocalLibrary(store: store)
+        log = library.log
+        statements = library.statements
+        unavailable = Self.problems(in: library)
+        logDraft = log.rowCount > 0 ? log.text : ""
+        archiveCounts = nil
+        offersCounts = nil
+        notice = nil
     }
 
     // MARK: - Explicit recovery
