@@ -91,6 +91,7 @@ public final class SupabaseAccount {
     }
     public var storedSession: SupabaseSession? { storage?.load() ?? memory }
 
+    /// Returns the new session (access token, optional refresh token, user ID) and stores it for later requests.
     @discardableResult
     public func signIn(email: String, password: String) async throws -> SupabaseSession {
         var request = makeRequest(path: "auth/v1/token",
