@@ -14,7 +14,14 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Account") {
-                if model.isSignedIn {
+                if model.isLoadingAccount && !model.isSignedIn {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Checking your account…")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                } else if model.isSignedIn {
                     Button("Sign out") { model.signOut() }
                     ForEach(model.accountSummary) { item in
                         HStack {
@@ -64,6 +71,7 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { Button("Save") { model.save() } }
         .onAppear { model.refreshArchive() }
+        .task { await model.loadAccount() }
         .confirmationDialog(
             ArchiveRebuildCopy.confirmation,
             isPresented: $confirmingRebuild,

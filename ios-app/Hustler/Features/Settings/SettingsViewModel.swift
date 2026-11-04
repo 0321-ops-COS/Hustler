@@ -22,8 +22,10 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var accountMessage: String?
     @Published private(set) var accountBusy = false
     @Published private(set) var isSignedIn = false
+    /// True until the Keychain session has been read, so a signed-in user never
+    /// sees the sign-in form flash before their account appears.
+    @Published private(set) var isLoadingAccount = true
 
-    private let account = SupabaseAccount(storage: KeychainSessionStorage())
     private let store: LocalStore
     private let settingsStore: SettingsStore
 
@@ -33,7 +35,6 @@ final class SettingsViewModel: ObservableObject {
         settingsStore = loaded
         edit = SettingsEdit(loaded.settings)
         texts = Self.texts(for: loaded.settings)
-        isSignedIn = account.storedSession != nil
         if case let .unavailable(reason) = loaded.status { message = reason }
     }
 
@@ -103,7 +104,34 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
+    /// Reads the stored session off the main actor. `SecItemCopyMatching` is a
+    /// synchronous system call, so doing it in `init` — which the app shell can
+    /// build for every tab — would stall the main view while it runs.
+    func loadAccount() async {
+        isLoadingAccount = true
+        let signedIn = await Task.detached(priority: .userInitiated) {
+            SupabaseAccount(storage: KeychainSessionStorage()).storedSession != nil
+        }.value
+        isSignedIn = signedIn
+        isLoadingAccount = false
+        if signedIn { await loadSummary() }
+    }
+
+    /// The read-only summary needs its own request, so it runs off the main
+    /// actor too rather than parsing the response while the UI waits.
+    private func loadSummary() async {
+        do {
+            accountSummary = try await Task.detached(priority: .userInitiated) {
+                try await SupabaseAccount(storage: KeychainSessionStorage()).fetchSummary()
+            }.value
+        } catch {
+            accountMessage = error.localizedDescription
+        }
+    }
+
     /// The password stays in this field only: never saved, logged or put in a URL.
+    /// Signing in, the Keychain write and the summary parse all run off the main
+    /// actor, so the UI keeps drawing while the network answers.
     func signIn() {
         let email = accountEmail.trimmingCharacters(in: .whitespaces)
         guard !accountBusy, !email.isEmpty, !accountPassword.isEmpty else { return }
@@ -112,10 +140,14 @@ final class SettingsViewModel: ObservableObject {
         accountMessage = nil
         Task {
             do {
-                try await account.signIn(email: email, password: password)
+                let summary = try await Task.detached(priority: .userInitiated) {
+                    let account = SupabaseAccount(storage: KeychainSessionStorage())
+                    try await account.signIn(email: email, password: password)
+                    return try await account.fetchSummary()
+                }.value
                 accountPassword = ""
                 isSignedIn = true
-                accountSummary = try await account.fetchSummary()
+                accountSummary = summary
             } catch {
                 accountMessage = error.localizedDescription
             }
@@ -124,11 +156,13 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func signOut() {
-        account.signOut()
         isSignedIn = false
         accountSummary = []
         accountMessage = nil
         accountPassword = ""
+        Task.detached(priority: .userInitiated) {
+            SupabaseAccount(storage: KeychainSessionStorage()).signOut()
+        }
     }
 
     private func reload() {
