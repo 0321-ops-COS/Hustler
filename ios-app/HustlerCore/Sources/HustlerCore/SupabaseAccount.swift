@@ -110,6 +110,7 @@ public final class SupabaseAccount {
         }
         return session
     }
+    /// Clears the persisted session from the keychain (or the in-memory fallback) so the next call sees no signed-in user.
     public func signOut() { storage?.clear(); memory = nil }
 
     public func fetchSummary() async throws -> [StoreKeySummary] {
