@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import HustlerCore
 
 /// Home: the web Scoreboard's period block. All values are `HomePeriodBoard` /
@@ -7,17 +8,53 @@ struct HomeView: View {
     /// Both cards' buttons, and the master tile's Edit, open the Data tab,
     /// which is where imports and the master-file link live.
     var onOpenData: () -> Void = {}
+    /// The gate's sentence about the pull after sign-in; nil when there is
+    /// nothing to say.
+    var accountNote: String? = nil
 
     @StateObject private var model = HomeViewModel()
     @StateObject private var analytics = AnalyticsViewModel()
 
     var body: some View {
+        Group {
+            if model.isLoading {
+                ProgressView("Loading this phone's data…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                content
+            }
+        }
+        .navigationTitle("Home")
+        .navigationBarTitleDisplayMode(.inline)
+        // The read and the parse run off the main thread, so this frame is drawn
+        // before any file is opened.
+        .task { await loadAll() }
+        // A pull at sign-in, or an import on another tab, writes new files.
+        .onReceive(NotificationCenter.default.publisher(for: .hustlerStoreDidChange)) { _ in
+            Task { await loadAll() }
+        }
+    }
+
+    private func loadAll() async {
+        let snapshot = await model.load()
+        analytics.apply(snapshot)
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             if let card = model.startCard {
                 HomeStartCardView(card: card, onOpen: onOpenData)
             }
             if let card = model.masterCard {
                 HomeMasterTileView(card: card, onOpen: onOpenData)
+            }
+            if let note = accountNote {
+                Text(note)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
             }
 
             Group {
@@ -44,12 +81,6 @@ struct HomeView: View {
                     periods
                 }
             }
-        }
-        .navigationTitle("Home")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            model.reload()
-            analytics.reload()
         }
     }
 

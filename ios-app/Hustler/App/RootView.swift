@@ -7,6 +7,8 @@ import HustlerCore
 struct RootView: View {
     /// Returns the shell to the sign-in gate after Settings signs out.
     var onSignedOut: () -> Void = {}
+    /// The gate's sentence about the pull after sign-in, shown on Home.
+    var accountNote: String? = nil
 
     @StateObject private var nav = NavigationViewModel()
     @Environment(\.scenePhase) private var scenePhase
@@ -20,7 +22,8 @@ struct RootView: View {
                         screen: screen,
                         onOpenData: { selection = .data },
                         onPinsChanged: { nav.reload() },
-                        onSignedOut: onSignedOut
+                        onSignedOut: onSignedOut,
+                        accountNote: accountNote
                     )
                 }
                 .tabItem { Label(screen.title, systemImage: Self.icon(for: screen)) }
@@ -60,10 +63,11 @@ struct AppScreenView: View {
     var onOpenData: () -> Void = {}
     var onPinsChanged: () -> Void = {}
     var onSignedOut: () -> Void = {}
+    var accountNote: String? = nil
 
     var body: some View {
         switch screen {
-        case .scoreboard: HomeView(onOpenData: onOpenData)
+        case .scoreboard: HomeView(onOpenData: onOpenData, accountNote: accountNote)
         case .check: CheckView()
         case .whatIf: WhatIfView()
         case .data: DataView()
