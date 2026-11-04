@@ -62,6 +62,8 @@ input{width:100%;margin-top:4px;background:var(--bg);color:var(--tx);border:1px 
 .good{color:var(--go)}.bad{color:var(--no)}
 #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--gold);color:#1d1740;padding:10px 16px;border-radius:12px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none}
 #toast.on{opacity:1}
+#rsOv{position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+#rsOv .card{max-width:380px;width:100%;margin:0}
 input,textarea{background:var(--g1);border-color:var(--g2)}.btn.ghost{border-color:var(--g2)}th{color:var(--g3)}.card,.stat{background:linear-gradient(180deg,var(--g1),var(--panel));border-color:var(--g2)}nav{overflow-x:auto;border:1px solid var(--g2)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -149,6 +151,7 @@ nav button[hidden]{display:none}
 <div hidden><div id="fields"></div><textarea id="zg"></textarea><textarea id="ma"></textarea><button id="saveSet"></button><button id="dlSet"></button></div>
 
 <section id="settings" hidden>
+  <div class="card"><h2 style="font-size:17px">Account</h2><p class="hint" id="acctMsg">Not signed in. Sign in from Handoff &gt; Cloud sync.</p><div class="row"><button class="btn ghost" id="forgotBtn">Forgot password</button><button class="btn ghost" id="chpwBtn" hidden>Change password</button><button class="btn ghost" data-open="sync">Cloud sync</button></div></div>
   <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
   <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Nothing here changes your log or your numbers.</p><div class="row"><button class="btn ghost" id="tstLink">Send a test offer</button><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
   <div class="card"><h2 style="font-size:17px">Rebuild archive rows</h2><p class="hint">Rebuilds every DoorDash archive row in your master log from your saved archive. Live shortcut rows are not touched. Duplicates between the archive and shortcut rows are hidden in the totals, never deleted.</p><div class="row"><button class="btn ghost" id="rebuildArch">Rebuild archive rows</button></div></div>
@@ -307,11 +310,14 @@ async function keepFile(f){
 }
 function drawCloud(){
   const b=$("#cloudBody");if(!b)return;
+  const cb=$("#chpwBtn");if(cb)cb.hidden=!sbUser;
   if(!sb){b.innerHTML='<p class="hint">Cloud sync is not available right now (offline, or the sync library is blocked). Your data stays in this browser.</p>';return}
+  const am=$("#acctMsg");
+  if(am)am.textContent=sbUser?("Signed in as "+(sbUser.email||"your account")+"."):"Not signed in. Sign in from Handoff > Cloud sync, or reset your password.";
   if(sbUser){
-    b.innerHTML='<p class="hint">Signed in as '+(sbUser.email||"your account")+'. Settings, log, history and statements save to your account, and the original files are kept in a private folder.</p><div class="row"><button class="btn" id="cl_sync">Sync now</button><button class="btn ghost" id="cl_out">Sign out</button></div>';
+    b.innerHTML='<p class="hint">Signed in as '+(sbUser.email||"your account")+'. Settings, log, history and statements save to your account, and the original files are kept in a private folder.</p><div class="row"><button class="btn" id="cl_sync">Sync now</button><button class="btn ghost" id="pf_chpw">Change password</button><button class="btn ghost" id="cl_out">Sign out</button></div>';
   }else{
-    b.innerHTML='<p class="hint">Sign in to save everything to your account and open it on any device. Only you can read your data.</p><div class="fields"><label>Email<input id="cl_e" type="email" autocomplete="username"></label><label>Password<input id="cl_p" type="password" autocomplete="current-password"></label></div><div class="row" style="margin-top:10px"><button class="btn" id="cl_in">Sign in</button><button class="btn ghost" id="cl_up">Create account</button></div>';
+    b.innerHTML='<p class="hint">Sign in to save everything to your account and open it on any device. Only you can read your data.</p><div class="fields"><label>Email<input id="cl_e" type="email" autocomplete="username"></label><label>Password<input id="cl_p" type="password" autocomplete="current-password"></label></div><div class="row" style="margin-top:10px"><button class="btn" id="cl_in">Sign in</button><button class="btn ghost" id="cl_up">Create account</button></div><p class="hint"><button class="btn ghost" id="pf_btn" style="padding:4px 10px">Forgot password?</button></p>';
   }
 }
 document.addEventListener("click",async e=>{
@@ -730,6 +736,90 @@ $("#pgList").innerHTML=PGS.map(p=>`<div class="pg"><button class="pgb" data-open
 document.addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){const b=document.querySelector('nav button[data-t="'+o.dataset.open+'"]');if(b)b.click()}});
 document.addEventListener("change",e=>{const i=e.target.closest("[data-pin]");if(!i)return;PIN[i.dataset.pin]=i.checked;try{localStorage.setItem("hh_pins",JSON.stringify(PIN))}catch(x){}applyPins()});
 applyPins();
+
+// ---- Account: password reset through Supabase recovery links ----
+// The recovery token stays in RS_TOKEN for this page view only: never logged, never stored, never put in a URL.
+let RS_TOKEN="",RS_MODE="recovery";
+const pageUrl=()=>location.origin+location.pathname;
+const rsEsc=s=>String(s).replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function hashParams(h){const o={},s=String(h||"").replace(/^#/,"");if(!s)return o;
+  s.split("&").forEach(kv=>{if(!kv)return;const i=kv.indexOf("="),k=decodeURIComponent((i<0?kv:kv.slice(0,i)).replace(/\+/g," ")),v=i<0?"":decodeURIComponent(kv.slice(i+1).replace(/\+/g," "));if(!(k in o))o[k]=v});return o}
+function stripUrl(){try{history.replaceState(null,"",location.pathname+location.search)}catch(e){}}
+function rsMsg(t,bad){const m=document.querySelector("#rsOv #rs_msg");if(m){m.textContent=t||"";m.className="hint"+(bad?" bad":"")}}
+function resetBox(html){let o=document.getElementById("rsOv");
+  if(!o){o=document.createElement("div");o.id="rsOv";document.body.appendChild(o)}
+  o.innerHTML='<div class="card">'+html+'</div>';
+  o.querySelectorAll("[data-rs-close]").forEach(b=>b.onclick=resetClose);
+  return o}
+function resetClose(){RS_TOKEN="";stripUrl();const o=document.getElementById("rsOv");if(o)o.remove()}
+function knownEmail(){const e=document.querySelector("#cl_e");if(e&&e.value.trim())return e.value.trim();return sbUser&&sbUser.email?sbUser.email:""}
+async function rsFetch(url,opt){const c="AbortController" in window?new AbortController():null,t=c?setTimeout(()=>c.abort(),15000):0;
+  try{const r=await fetch(url,c?{...opt,signal:c.signal}:opt);let j=null;try{j=await r.json()}catch(e){}return{r,j}}finally{if(c)clearTimeout(t)}}
+function rsError(j,status){const t=j&&(j.msg||j.error_description||j.message);if(t)return String(t);if(j&&j.error_code)return String(j.error_code).replace(/_/g," ");return "That did not work (error "+status+"). Try asking for a new link."}
+function screenRequest(prefill){
+  resetBox('<h2 style="font-size:18px">Reset your password</h2><p class="hint">Enter the email for your account and we will send a reset link to it.</p><label>Email<input id="rs_e" type="email" inputmode="email" autocomplete="email"></label><div class="row"><button class="btn" id="rs_send">Send reset link</button><button class="btn ghost" data-rs-close>Cancel</button></div><p class="hint" id="rs_msg"></p>');
+  const e=document.querySelector("#rs_e"),pre=prefill||knownEmail();
+  if(e&&pre)e.value=pre;
+  document.querySelector("#rs_send").onclick=sendResetLink;
+  if(e)e.focus();
+}
+async function sendResetLink(){
+  const m=String((document.querySelector("#rs_e")||{}).value||"").trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){rsMsg("Enter the email for your account.",1);return}
+  if(!CFG.supabaseUrl||!CFG.supabaseKey){rsMsg("Password reset is not set up in this copy of the app.",1);return}
+  const b=document.querySelector("#rs_send");if(b)b.disabled=true;rsMsg("Sending...");
+  try{
+    // The same answer goes back whatever the server says, so the page never reveals whether an account exists.
+    // redirect_to is a query parameter on this endpoint (that is where the Supabase client sends it).
+    await rsFetch(CFG.supabaseUrl+"/auth/v1/recover?redirect_to="+encodeURIComponent(pageUrl()),{method:"POST",headers:{apikey:CFG.supabaseKey,"Content-Type":"application/json"},body:JSON.stringify({email:m})});
+  }catch(e){if(b)b.disabled=false;rsMsg("Could not reach the server. Check your connection and try again.",1);return}
+  if(b)b.disabled=false;
+  rsMsg("If that email has an account, a reset link is on its way.");
+}
+function screenSet(mode){
+  RS_MODE=mode==="change"?"change":"recovery";
+  const sub=RS_MODE==="change"?"Signed in as "+rsEsc((sbUser&&sbUser.email)||"your account")+". Choose a new password for it. It needs at least 8 characters.":"Choose a password for your account. It needs at least 8 characters.";
+  resetBox('<h2 style="font-size:18px">Set a new password</h2><p class="hint">'+sub+'</p><label>New password<input id="rs_p1" type="password" minlength="8" autocomplete="new-password"></label><label>Confirm new password<input id="rs_p2" type="password" minlength="8" autocomplete="new-password"></label><label style="display:flex;align-items:center;gap:8px;margin-top:10px"><input type="checkbox" id="rs_show" style="width:auto;margin:0"> Show passwords</label><div class="row"><button class="btn" id="rs_save">Set new password</button><button class="btn ghost" data-rs-close>Cancel</button></div><p class="hint" id="rs_msg"></p>');
+  document.querySelector("#rs_show").onchange=e=>{const t=e.target.checked?"text":"password";document.querySelector("#rs_p1").type=t;document.querySelector("#rs_p2").type=t};
+  document.querySelector("#rs_save").onclick=savePassword;
+}
+async function savePassword(){
+  const p1=(document.querySelector("#rs_p1")||{}).value||"",p2=(document.querySelector("#rs_p2")||{}).value||"",change=RS_MODE==="change";
+  if(p1.length<8){rsMsg("Use at least 8 characters.",1);return}
+  if(p1!==p2){rsMsg("The two passwords do not match.",1);return}
+  let token=RS_TOKEN;
+  if(!token&&change)token=await sessionToken();
+  if(!token){rsMsg(change?"Sign in again, then change your password.":"This reset link can no longer be used. Ask for a new one.",1);return}
+  const b=document.querySelector("#rs_save");if(b)b.disabled=true;rsMsg("Saving...");
+  let out;
+  try{
+    out=await rsFetch(CFG.supabaseUrl+"/auth/v1/user",{method:"PUT",headers:{apikey:CFG.supabaseKey,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({password:p1})});
+  }catch(e){if(b)b.disabled=false;rsMsg("Could not reach the server. Check your connection and try again.",1);return}
+  if(out.r.ok){resetClose();toast("Password updated");const m=$("#cloudMsg");if(m)m.textContent=change?"Password updated. Use the new password the next time you sign in.":"Password updated. Sign in with your new password.";return}
+  if(b)b.disabled=false;
+  rsMsg(rsError(out.j,out.r.status),1);
+}
+function screenExpired(){
+  resetBox('<h2 style="font-size:18px">That link did not work</h2><p class="hint" id="rs_err">This reset link has expired or has already been used.</p><p class="hint">Reset links can only be used once. Ask for a new one and it will arrive in your inbox.</p><div class="row"><button class="btn" id="rs_new">Send a new link</button><button class="btn ghost" data-rs-close>Close</button></div>');
+  document.querySelector("#rs_new").onclick=()=>screenRequest("");
+}
+async function sessionToken(){
+  try{const r=await tmo(sb.auth.getSession(),10000);return r&&r.data&&r.data.session?r.data.session.access_token:""}catch(e){return ""}
+}
+function screenChange(){
+  if(!sbUser){toast("Sign in first");return}
+  RS_TOKEN="";
+  screenSet("change");
+}
+document.addEventListener("click",e=>{const id=e.target.id;
+  if(id==="forgotBtn"||id==="pf_btn"){e.preventDefault();screenRequest("");return}
+  if(id==="chpwBtn"||id==="pf_chpw"){e.preventDefault();screenChange()}});
+// Read the recovery link before the cloud client is created, so the token is never consumed or left in the address bar.
+(function(){
+  const p=hashParams(location.hash);
+  if(p.type==="recovery"&&p.access_token){RS_TOKEN=p.access_token;stripUrl();screenSet();return}
+  if((p.error||p.error_code)&&(!p.type||p.type==="recovery")){stripUrl();screenExpired()}
+})();
 
 // Log page sections: Day, Week or Whole file. The whole-file box (#csv) stays the working copy the rest of the app reads.
 let SC="all";
