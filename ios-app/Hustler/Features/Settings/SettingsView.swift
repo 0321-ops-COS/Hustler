@@ -30,6 +30,25 @@ struct SettingsView: View {
                             Text(item.line).font(.caption).foregroundStyle(.secondary)
                         }
                     }
+                    Button("Pull from account") {
+                        Task { await model.previewAccountPull() }
+                    }
+                    .disabled(model.pullBusy)
+                    ForEach(model.pullPreview) { set in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(set.key)
+                            Text(set.summary).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    if model.pullCanImport {
+                        Button("Replace phone data with account data", role: .destructive) {
+                            Task { await model.importFromAccount() }
+                        }
+                        .disabled(model.pullBusy)
+                    }
+                    if let message = model.pullMessage {
+                        Text(message).font(.footnote).foregroundStyle(.secondary)
+                    }
                 } else {
                     Text("Not signed in.").foregroundStyle(.secondary)
                 }

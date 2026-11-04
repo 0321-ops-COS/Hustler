@@ -131,19 +131,20 @@ public struct StoreKeySummary: Equatable, Sendable, Identifiable {
 }
 
 /// Parses `GET /rest/v1/hh_store?select=k,updated_at,v`, including keys the
-/// response does not contain.
+/// response does not contain. The rows come from `SupabaseStoreRows`, so the
+/// response is read once for both the summary and the pull.
 public enum SupabaseStoreSummary {
     public static let keys = ["settings", "log", "archive", "statements", "ca"]
     public static func parse(_ data: Data) throws -> [StoreKeySummary] {
-        guard let rows = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            throw SupabaseAccountError.unexpectedResponse
-        }
+        summarize(try SupabaseStoreRows.parse(data))
+    }
+    public static func summarize(_ rows: [AccountStoreRow]) -> [StoreKeySummary] {
         var found: [String: StoreKeySummary] = [:]
         for row in rows {
-            guard let key = row["k"] as? String else { throw SupabaseAccountError.unexpectedResponse }
-            found[key] = StoreKeySummary(key: key, exists: true,
-                                         updatedAt: row["updated_at"] as? String,
-                                         itemCount: itemCount(row["v"]))
+            let value = try? JSONSerialization.jsonObject(with: row.value, options: [.fragmentsAllowed])
+            found[row.key] = StoreKeySummary(key: row.key, exists: true,
+                                             updatedAt: row.updatedAt,
+                                             itemCount: itemCount(value))
         }
         return keys.map { found[$0] ?? StoreKeySummary(key: $0, exists: false, updatedAt: nil, itemCount: 0) }
     }
@@ -262,6 +263,13 @@ public final class SupabaseAccount {
     /// Every account call refreshes first; a rejected refresh throws
     /// `.notSignedIn` so the caller returns to the gate.
     public func fetchSummary() async throws -> [StoreKeySummary] {
+        SupabaseStoreSummary.summarize(try await fetchRows())
+    }
+
+    /// The account's rows, values included, for the pull preview and import.
+    /// Same refresh rule as every account call, and read-only: the phone never
+    /// writes to Supabase.
+    public func fetchRows() async throws -> [AccountStoreRow] {
         let gate = SessionGate.after(await refreshSessionIfNeeded())
         guard gate == .app, let session = storedSession else { throw SupabaseAccountError.notSignedIn }
         var request = makeRequest(path: "rest/v1/hh_store",
@@ -270,7 +278,7 @@ public final class SupabaseAccount {
         let (data, status) = try await send(request)
         if status == 401 { throw SupabaseAccountError.notSignedIn }
         guard (200..<300).contains(status) else { throw SupabaseAccountError.unexpectedResponse }
-        return try SupabaseStoreSummary.parse(data)
+        return try SupabaseStoreRows.parse(data)
     }
     private func makeRequest(path: String, query: [URLQueryItem]) -> URLRequest {
         var components = URLComponents(url: baseURL.appendingPathComponent(path),

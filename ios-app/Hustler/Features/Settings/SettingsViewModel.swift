@@ -20,6 +20,13 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var accountMessage: String?
     @Published private(set) var isSignedIn = false
 
+    // Pull from account: read-only, and nothing is written until the import tap.
+    @Published private(set) var pullPreview: [AccountDataSet] = []
+    @Published private(set) var pullMessage: String?
+    @Published private(set) var pullBusy = false
+    @Published private(set) var pullCanImport = false
+    private var pendingPull: AccountPullPlan?
+
     private let account = SupabaseAccount(storage: KeychainSessionStorage())
     private let store: LocalStore
     private let settingsStore: SettingsStore
@@ -124,6 +131,62 @@ final class SettingsViewModel: ObservableObject {
         isSignedIn = false
         accountSummary = []
         accountMessage = nil
+        pullPreview = []
+        pullMessage = nil
+        pullCanImport = false
+        pendingPull = nil
+    }
+
+    /// The preview: what the account holds against what this phone holds, per
+    /// data set, plus how old the account's copy is. Nothing is written here.
+    func previewAccountPull() async {
+        guard !pullBusy else { return }
+        pullBusy = true
+        pullMessage = nil
+        pullPreview = []
+        pullCanImport = false
+        pendingPull = nil
+        defer { pullBusy = false }
+
+        do {
+            let rows = try await account.fetchRows()
+            let library = LocalLibrary(store: store)
+            pullPreview = AccountPull.preview(rows: rows, currentSettings: settingsStore.settings,
+                                              currentLog: library.log.text)
+            let plan = try AccountPull.plan(rows: rows, currentSettings: settingsStore.settings,
+                                            currentLog: library.log.text)
+            pendingPull = plan
+            pullCanImport = true
+            pullMessage = "Account: \(plan.accountRows) log rows. This phone: \(plan.phoneRows)."
+        } catch {
+            pullMessage = error.localizedDescription
+        }
+    }
+
+    /// The only write, and only on an explicit tap. The phone's current data is
+    /// saved as a handoff file first, then replaced by the account's settings
+    /// and log. The archive, statements and CA weeks are not imported yet.
+    func importFromAccount() async {
+        guard let plan = pendingPull, !pullBusy else { return }
+        pullBusy = true
+        pullMessage = nil
+        defer { pullBusy = false }
+
+        do {
+            let library = LocalLibrary(store: store)
+            let backup = try AccountPullBackup.write(settings: settingsStore.settings,
+                                                     log: library.log.text,
+                                                     into: store.directory)
+            if plan.logChanged { try library.saveLog(plan.log) }
+            if plan.settingsChanged { try settingsStore.save(plan.settings) }
+            pendingPull = nil
+            pullCanImport = false
+            reload()
+            pullMessage = "Replaced with your account's data. A copy of this phone's data was saved as "
+                + "\(backup.lastPathComponent) in the app's \(store.directory.lastPathComponent) folder."
+        } catch {
+            pullMessage = error.localizedDescription
+        }
     }
 
     private func reload() {
