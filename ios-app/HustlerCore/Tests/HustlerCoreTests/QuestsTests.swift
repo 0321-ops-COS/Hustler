@@ -25,13 +25,17 @@ final class QuestsTests: XCTestCase {
     /// Six Monday-keyed weeks. `2026-09-28` is the fifth prior week, so
     /// `slice(-4)` must leave its $500 week out of every baseline.
     private var log: [LogRow] {
-        Array(repeating: accepted("2026-09-28", net: 100, miles: 2, minutes: 12), count: 5)
-        + Array(repeating: accepted("2026-10-05", net: 20, miles: 10, minutes: 120), count: 5)
-        + [accepted("2026-10-12", net: 10, miles: 5, minutes: 60)]
-        + [accepted("2026-10-19", net: 100, miles: 40, minutes: 300), accepted("2026-10-19", net: 100, miles: 30, minutes: 300), accepted("2026-10-19", net: 100, miles: 30, minutes: 300)]
-        + [accepted("2026-10-26", net: 45, miles: 10, minutes: 150), accepted("2026-10-26", net: 45, miles: 10, minutes: 150)]
-        + [accepted("2026-11-02", net: 60, miles: 20, minutes: 180), accepted("2026-11-02", net: 50, miles: 10, minutes: 120), accepted("2026-11-02", net: 40, miles: 5, minutes: 60, "SKIP"), declined("2026-11-02", "SKIP")]
-        + Array(repeating: declined("2026-11-02", "TAKE IT"), count: 4) + [declined("2026-11-02", "SKIP")]
+        // One row set per statement: the single `+` chain was too much for the
+        // type checker to finish in reasonable time.
+        var rows = Array(repeating: accepted("2026-09-28", net: 100, miles: 2, minutes: 12), count: 5)
+        rows += Array(repeating: accepted("2026-10-05", net: 20, miles: 10, minutes: 120), count: 5)
+        rows += [accepted("2026-10-12", net: 10, miles: 5, minutes: 60)]
+        rows += [accepted("2026-10-19", net: 100, miles: 40, minutes: 300), accepted("2026-10-19", net: 100, miles: 30, minutes: 300), accepted("2026-10-19", net: 100, miles: 30, minutes: 300)]
+        rows += [accepted("2026-10-26", net: 45, miles: 10, minutes: 150), accepted("2026-10-26", net: 45, miles: 10, minutes: 150)]
+        rows += [accepted("2026-11-02", net: 60, miles: 20, minutes: 180), accepted("2026-11-02", net: 50, miles: 10, minutes: 120), accepted("2026-11-02", net: 40, miles: 5, minutes: 60, "SKIP"), declined("2026-11-02", "SKIP")]
+        rows += Array(repeating: declined("2026-11-02", "TAKE IT"), count: 4)
+        rows += [declined("2026-11-02", "SKIP")]
+        return rows
     }
 
     func testWeekAggsMatchesTheWebPerWeekCounters() throws {

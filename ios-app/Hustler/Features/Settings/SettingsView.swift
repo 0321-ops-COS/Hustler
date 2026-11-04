@@ -6,6 +6,8 @@ import HustlerCore
 struct SettingsView: View {
     /// Lets the shell redraw the tab bar as soon as a pin is switched.
     var onPinsChanged: () -> Void = {}
+    /// Returns the shell to the sign-in gate; nothing local is deleted.
+    var onSignedOut: () -> Void = {}
 
     @StateObject private var model = SettingsViewModel()
     @Environment(\.openURL) private var openURL
@@ -15,7 +17,12 @@ struct SettingsView: View {
         Form {
             Section("Account") {
                 if model.isSignedIn {
-                    Button("Sign out") { model.signOut() }
+                    // Signing out clears the sign-in only: the log, archive and
+                    // settings stay on this phone.
+                    Button("Sign out") {
+                        model.signOut()
+                        onSignedOut()
+                    }
                     ForEach(model.accountSummary) { item in
                         HStack {
                             Text(item.key)
@@ -24,11 +31,7 @@ struct SettingsView: View {
                         }
                     }
                 } else {
-                    TextField("Email", text: $model.accountEmail)
-                        .keyboardType(.emailAddress)
-                    SecureField("Password", text: $model.accountPassword)
-                    Button("Sign in") { model.signIn() }
-                        .disabled(model.accountBusy || model.accountEmail.isEmpty || model.accountPassword.isEmpty)
+                    Text("Not signed in.").foregroundStyle(.secondary)
                 }
                 if let message = model.accountMessage {
                     Text(message).font(.footnote).foregroundStyle(.secondary)
@@ -64,6 +67,11 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { Button("Save") { model.save() } }
         .onAppear { model.refreshArchive() }
+        .task {
+            // A rejected refresh clears the session, so the shell goes back to
+            // the gate; an offline phone stays here with its local data.
+            if !(await model.loadAccount()) { onSignedOut() }
+        }
         .confirmationDialog(
             ArchiveRebuildCopy.confirmation,
             isPresented: $confirmingRebuild,

@@ -6,17 +6,59 @@ import FoundationNetworking
 /// The signed-in session. The password is never part of this type.
 public struct SupabaseSession: Codable, Equatable, Sendable {
     public let accessToken: String, refreshToken: String?, userID: String
+    /// When the access token stops working. `nil` for a session an older build
+    /// stored without one; that session is refreshed on first use.
+    public let expiresAt: Date?
 
-    /// `/auth/v1/token?grant_type=password`: `access_token`, `refresh_token`, `user.id`.
-    public static func from(data: Data) throws -> SupabaseSession {
+    /// A token this close to expiring is treated as expired, so an account
+    /// call does not race the clock.
+    public static let refreshLeeway: TimeInterval = 60
+
+    public init(accessToken: String, refreshToken: String?, userID: String, expiresAt: Date? = nil) {
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.userID = userID
+        self.expiresAt = expiresAt
+    }
+
+    private enum CodingKeys: String, CodingKey { case accessToken, refreshToken, userID, expiresAt }
+
+    /// A Keychain entry written before `expiresAt` existed still loads.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        accessToken = try values.decode(String.self, forKey: .accessToken)
+        refreshToken = try values.decodeIfPresent(String.self, forKey: .refreshToken)
+        userID = try values.decode(String.self, forKey: .userID)
+        expiresAt = try values.decodeIfPresent(Date.self, forKey: .expiresAt)
+    }
+
+    /// `/auth/v1/token?grant_type=password` or `grant_type=refresh_token`:
+    /// `access_token`, `refresh_token`, `user.id`, and `expires_at`/`expires_in`.
+    public static func from(data: Data, now: Date = Date()) throws -> SupabaseSession {
         struct Payload: Decodable {
             struct User: Decodable { let id: String }
             let access_token: String, refresh_token: String?, user: User
+            let expires_at: Double?, expires_in: Double?
         }
         guard let p = try? JSONDecoder().decode(Payload.self, from: data) else {
             throw SupabaseAccountError.unexpectedResponse
         }
-        return SupabaseSession(accessToken: p.access_token, refreshToken: p.refresh_token, userID: p.user.id)
+        let expiresAt: Date?
+        if let seconds = p.expires_at {
+            expiresAt = Date(timeIntervalSince1970: seconds)
+        } else if let seconds = p.expires_in {
+            expiresAt = now.addingTimeInterval(seconds)
+        } else {
+            expiresAt = nil
+        }
+        return SupabaseSession(accessToken: p.access_token, refreshToken: p.refresh_token,
+                               userID: p.user.id, expiresAt: expiresAt)
+    }
+
+    /// True when the access token is expired, about to expire, or of unknown age.
+    public func needsRefresh(now: Date, leeway: TimeInterval = SupabaseSession.refreshLeeway) -> Bool {
+        guard let expiresAt else { return true }
+        return expiresAt.timeIntervalSince(now) <= leeway
     }
 }
 
@@ -36,6 +78,42 @@ public enum SupabaseAccountError: LocalizedError, Equatable {
         case .unexpectedResponse: return "The account service returned something this app does not understand."
         case .notSignedIn: return "Sign in to see what is stored in your account."
         case .keychain: return "Could not keep the sign-in on this device."
+        }
+    }
+}
+
+/// What a refresh attempt did to the stored session.
+public enum SessionRefreshOutcome: Equatable, Sendable {
+    /// Nothing is stored: the gate shows.
+    case noSession
+    /// The access token is still good; no request was sent.
+    case current
+    /// The server issued a new session and it replaced the stored one.
+    case refreshed
+    /// The server refused the refresh token: the session was cleared and the
+    /// gate shows.
+    case rejected
+    /// No usable answer (offline, timeout, server error): the session is kept,
+    /// so a stored sign-in still opens the app without a network.
+    case kept
+}
+
+/// The launch gate: the sign-in screen, or the app.
+public enum SessionGate: Equatable, Sendable {
+    case signIn, app
+
+    /// Keychain only, never the network: a stored session opens the app straight
+    /// away, so local data is never blocked by a refresh.
+    public static func atLaunch(session: SupabaseSession?) -> SessionGate {
+        session == nil ? .signIn : .app
+    }
+
+    /// After a refresh: only an explicit rejection, or an empty Keychain, sends
+    /// the phone back to the gate. A phone that is offline stays signed in.
+    public static func after(_ outcome: SessionRefreshOutcome) -> SessionGate {
+        switch outcome {
+        case .noSession, .rejected: return .signIn
+        case .current, .refreshed, .kept: return .app
         }
     }
 }
@@ -89,7 +167,13 @@ public final class SupabaseAccount {
         self.baseURL = baseURL; self.apiKey = apiKey
         self.urlSession = urlSession; self.storage = storage
     }
-    public var storedSession: SupabaseSession? { storage?.load() ?? memory }
+    /// The session this device holds. `memory` only holds a session the Keychain
+    /// could not, so the newest token wins.
+    public var storedSession: SupabaseSession? { memory ?? storage?.load() }
+
+    /// One refresh at a time: Supabase rotates the refresh token, so a second
+    /// request carrying the old one would be rejected and sign the phone out.
+    private var refreshTask: Task<SessionRefreshOutcome, Never>?
 
     @discardableResult
     public func signIn(email: String, password: String) async throws -> SupabaseSession {
@@ -109,10 +193,77 @@ public final class SupabaseAccount {
         }
         return session
     }
+    /// Clears the sign-in on this device only. Nothing the app stored (log,
+    /// archive, settings) is touched.
     public func signOut() { storage?.clear(); memory = nil }
 
+    /// Replaces the stored session when the access token is expired or about to
+    /// expire, and sends nothing while it is still good.
+    ///
+    /// A server rejection means the refresh token is no longer usable, so the
+    /// session is cleared and the gate shows. A network failure or a server
+    /// error keeps the session: a stored sign-in opens the app offline.
+    @discardableResult
+    public func refreshSessionIfNeeded(now: Date = Date()) async -> SessionRefreshOutcome {
+        guard let session = storedSession else { return .noSession }
+        guard session.needsRefresh(now: now) else { return .current }
+        if let inFlight = refreshTask { return await inFlight.value }
+        let task = Task { await self.performRefresh(session) }
+        refreshTask = task
+        let outcome = await task.value
+        refreshTask = nil
+        return outcome
+    }
+
+    private func performRefresh(_ session: SupabaseSession) async -> SessionRefreshOutcome {
+        guard let refreshToken = session.refreshToken else {
+            // Nothing to send and nothing to keep: the phone must sign in again.
+            clearSession()
+            return .rejected
+        }
+        var request = makeRequest(path: "auth/v1/token",
+                                  query: [URLQueryItem(name: "grant_type", value: "refresh_token")])
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(RefreshToken(refresh_token: refreshToken))
+        do {
+            let (data, status) = try await send(request)
+            if Self.isRejection(status) {
+                clearSession()
+                return .rejected
+            }
+            guard (200..<300).contains(status),
+                  let refreshed = try? SupabaseSession.from(data: data) else {
+                // 5xx, 429 or a body this app does not understand: not the
+                // phone's fault, so the session stays.
+                return .kept
+            }
+            adopt(refreshed)
+            return .refreshed
+        } catch {
+            // Offline, timed out, no route: keep the session and open the app.
+            return .kept
+        }
+    }
+
+    /// Only these mean "this device may not use this account any more".
+    private static func isRejection(_ status: Int) -> Bool {
+        status == 400 || status == 401 || status == 403
+    }
+
+    private func adopt(_ session: SupabaseSession) {
+        if let storage, storage.save(session) { return }
+        memory = session
+    }
+    private func clearSession() { storage?.clear(); memory = nil }
+
+    private struct RefreshToken: Encodable { let refresh_token: String }
+
+    /// Every account call refreshes first; a rejected refresh throws
+    /// `.notSignedIn` so the caller returns to the gate.
     public func fetchSummary() async throws -> [StoreKeySummary] {
-        guard let session = storedSession else { throw SupabaseAccountError.notSignedIn }
+        let gate = SessionGate.after(await refreshSessionIfNeeded())
+        guard gate == .app, let session = storedSession else { throw SupabaseAccountError.notSignedIn }
         var request = makeRequest(path: "rest/v1/hh_store",
                                   query: [URLQueryItem(name: "select", value: "k,updated_at,v")])
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
