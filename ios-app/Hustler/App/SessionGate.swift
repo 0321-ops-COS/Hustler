@@ -14,6 +14,9 @@ final class SessionGateModel: ObservableObject {
     @Published var password = ""
     @Published private(set) var message: String?
     @Published private(set) var busy = false
+    /// One plain sentence about the pull that runs after sign-in: loaded rows,
+    /// nothing saved yet, or the reason it could not be read.
+    @Published private(set) var pullNote: String?
 
     let account: SupabaseAccount
     private var started = false
@@ -29,6 +32,7 @@ final class SessionGateModel: ObservableObject {
         guard !started, phase == .app else { return }
         started = true
         phase = SessionGate.after(await account.refreshSessionIfNeeded()) == .app ? .app : .signIn
+        await adoptAccountData()
     }
 
     /// Sign in only: there is no sign-up here, and the password stays in the
@@ -43,10 +47,47 @@ final class SessionGateModel: ObservableObject {
             try await account.signIn(email: address, password: secret)
             password = ""
             phase = .app
+            busy = false
+            // Signed in: bring the owner's saved data into the app screens.
+            await adoptAccountData()
+            return
         } catch {
             message = error.localizedDescription
         }
         busy = false
+    }
+
+    /// Pulls the account's data into the app straight after signing in, so the
+    /// screens are not empty. It writes on its own only when this phone holds
+    /// nothing to lose; a phone that already has a log keeps the preview and the
+    /// explicit replace in Settings > Account. A backup is written either way,
+    /// and a failure is a plain sentence rather than a silent empty screen.
+    func adoptAccountData() async {
+        guard phase == .app else { return }
+        let store = LocalStore()
+        let library = LocalLibrary(store: store)
+        let settingsStore = SettingsStore(store: store)
+
+        guard AccountPull.canAdoptWithoutAsking(currentSettings: settingsStore.settings,
+                                                currentLog: library.log.text) else {
+            pullNote = "This phone already has data. Settings > Account compares it with your account."
+            return
+        }
+
+        do {
+            let rows = try await account.fetchRows()
+            let plan = try AccountPull.plan(rows: rows,
+                                            currentSettings: settingsStore.settings,
+                                            currentLog: library.log.text)
+            try AccountPullBackup.write(settings: settingsStore.settings,
+                                        log: library.log.text,
+                                        into: store.directory)
+            if plan.logChanged { try library.saveLog(plan.log) }
+            if plan.settingsChanged { try settingsStore.save(plan.settings) }
+            pullNote = "Loaded \(plan.accountRows) log rows from your account."
+        } catch {
+            pullNote = error.localizedDescription
+        }
     }
 
     /// Signing out clears this device's session only: the log, the archive and
@@ -68,7 +109,7 @@ struct SessionGateView: View {
         case .signIn:
             SignInView(model: model)
         case .app:
-            RootView(onSignedOut: { model.signOut() })
+            RootView(accountNote: model.pullNote, onSignedOut: { model.signOut() })
                 .task { await model.start() }
         }
     }

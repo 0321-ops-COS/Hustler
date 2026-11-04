@@ -1,5 +1,12 @@
 import Foundation
 
+public extension Notification.Name {
+    /// Posted after a write lands. Screens that show the log listen for it, so an
+    /// import made on another tab (or right after sign-in) reaches them without
+    /// a relaunch.
+    static let hustlerStoreDidChange = Notification.Name("hustler.store.did.change")
+}
+
 /// The files the app keeps. The raw value is the file name on disk, so the
 /// store and the code that names a file cannot disagree.
 public enum StoreArtefact: String, CaseIterable, Sendable {
@@ -129,6 +136,8 @@ public final class LocalStore {
         } catch {
             throw Failure.unwritable(artefact)
         }
+
+        NotificationCenter.default.post(name: .hustlerStoreDidChange, object: nil)
     }
 
     /// The explicit recovery path: move the unreadable file aside under a free

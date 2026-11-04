@@ -63,11 +63,16 @@ final class HomeViewModel: ObservableObject {
     /// A saved log that exists but cannot be read. Never shown as "no log".
     @Published private(set) var logUnavailable: String?
 
+    /// True until the first read finishes. The screen draws a spinner instead of
+    /// blocking the first frame after sign-in on file IO and log parsing.
+    @Published private(set) var isLoading = true
+
     private let store: LocalStore
     private let clock: HomeClock
     private let settings: VerdictSettings
     private var rows: [LogRow] = []
     private var statementMonths: [String] = []
+    private var storedSettings = AppSettings()
     private var board: HomePeriodBoard?
     /// `nil` starts the slider at the pace's average week, as `renderCA()` does.
     private var caExtraHours: Int?
@@ -80,7 +85,6 @@ final class HomeViewModel: ObservableObject {
         self.store = store
         self.clock = clock
         self.settings = settings
-        reload()
     }
 
     var selectedBucket: Bucket? { buckets.first { $0.key == selectedKey } }
@@ -100,21 +104,31 @@ final class HomeViewModel: ObservableObject {
         selectedKey = board.selectedKey
     }
 
-    /// Re-reads the stored log. A fresh `LocalLibrary` is used because the
-    /// Statements screen may have saved since this model was built; reads are
-    /// side-effect free apart from marking an unreadable file blocked.
+    /// The first read, off the main thread: the frame after sign-in is drawn
+    /// before any file is opened, so a big log cannot stall the screen.
+    @discardableResult
+    func load() async -> HomeSnapshot {
+        let directory = store.directory
+        let snapshot = await Task.detached(priority: .userInitiated) {
+            HomeLoader.snapshot(in: directory)
+        }.value
+        apply(snapshot)
+        return snapshot
+    }
+
+    /// Re-reads the stored log on the calling thread. Used for refreshes a tap
+    /// triggers, where a turn of the run loop is not worth splitting out.
     func reload() {
-        let library = LocalLibrary(store: store)
+        apply(HomeLoader.snapshot(in: store.directory))
+    }
 
-        var problem: String?
-        if case let .unavailable(reason) = library.status(of: .masterLog) {
-            problem = reason
-        }
-
-        logUnavailable = problem
-        hasLog = library.log.rowCount > 0
-        rows = problem == nil ? MasterLogParser.parse(library.log.text) : []
-        statementMonths = Array(library.statements.statements.keys)
+    private func apply(_ snapshot: HomeSnapshot) {
+        logUnavailable = snapshot.logUnavailable
+        hasLog = snapshot.hasLog
+        storedSettings = snapshot.settings
+        rows = snapshot.rows
+        statementMonths = snapshot.statementMonths
+        isLoading = false
         rebuild()
     }
 
@@ -139,7 +153,7 @@ final class HomeViewModel: ObservableObject {
         questCard = Quests.card(rows: ordered, settings: settings, clock: clock)
         caCard = CAGuaranteeViewModel.make(
             rows: ordered,
-            settings: SettingsStore(store: store).settings,
+            settings: storedSettings,
             today: clock.dateText(),
             extraHours: caExtraHours
         )

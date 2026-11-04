@@ -38,21 +38,20 @@ final class AnalyticsViewModel: ObservableObject {
 
     init(store: LocalStore = LocalStore()) {
         self.store = store
-        reload()
     }
 
-    /// Re-reads the log and saved settings, so Statements changes show up.
-    func reload() {
-        let library = LocalLibrary(store: store)
-        guard !library.isUnavailable(.masterLog) else {
+    /// Draws the tables from a read the caller already did: Home opens the files
+    /// once, off the main thread, and hands the result to both models.
+    func apply(_ snapshot: HomeSnapshot) {
+        guard snapshot.logUnavailable == nil else {
             matrixRows = []; zoneRows = []; hourRows = []; monthRows = []; taxRows = []
             return
         }
 
-        let settings = SettingsStore(store: store).settings
+        let settings = snapshot.settings
         let verdict = settings.verdictSettings()
         let taxRate = settings.taxRate
-        let rows = MasterLog.orderedForAnalysis(MasterLogParser.parse(library.log.text))
+        let rows = MasterLog.orderedForAnalysis(snapshot.rows)
 
         zoneRows = Analytics.zones(rows, settings: verdict).map { zone in
             Row(id: zone.zone, label: zone.zone, values: [
@@ -85,5 +84,10 @@ final class AnalyticsViewModel: ObservableObject {
             MatrixRow(id: cell.label, label: cell.label, orders: "\(cell.orders)",
                       netPerHour: cell.netPerHour.map { Money.format($0) } ?? "--", agrees: cell.agrees)
         }
+    }
+
+    /// Synchronous re-read, for callers that cannot await.
+    func reload() {
+        apply(HomeLoader.snapshot(in: store.directory))
     }
 }

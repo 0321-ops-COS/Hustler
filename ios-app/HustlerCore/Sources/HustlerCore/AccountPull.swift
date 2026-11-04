@@ -184,6 +184,16 @@ public enum AccountPull {
         return plan
     }
 
+    /// True when this phone holds nothing the account's copy could overwrite:
+    /// no log rows yet and settings still at their defaults. A fresh install
+    /// after signing in is exactly this, so its data can be adopted without
+    /// asking. Anything the owner already has keeps the preview and the
+    /// explicit "Replace phone data with account data" tap.
+    public static func canAdoptWithoutAsking(currentSettings: AppSettings,
+                                             currentLog: String) -> Bool {
+        MasterLog.rowCount(currentLog) == 0 && currentSettings == AppSettings()
+    }
+
     private static func rowsByKey(_ rows: [AccountStoreRow]) -> [String: AccountStoreRow] {
         Dictionary(rows.map { ($0.key, $0) }, uniquingKeysWith: { first, _ in first })
     }
