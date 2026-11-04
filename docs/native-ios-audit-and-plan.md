@@ -9,9 +9,9 @@
 |---|---|
 | Repository | [0321-ops-COS/Hustler](https://github.com/0321-ops-COS/Hustler) |
 | Branch checked | `freebuff/f042ca7c`; the S4-1 work merged from `freebuff/76a5641d` |
-| Code checked | `aeb5b62`, 2026-11-03 |
+| Code checked | `105129f`, 2026-11-03 |
 | Web app | Unchanged: `index.html`, `sw.js` and `manifest.webmanifest` |
-| Merge/deploy | Merged through PR #42 (merge commit `aeb5b62`, 2026-11-03); no deployment. The `main` ref could not be re-checked offline: local refs stop on 2026-10-28 (`origin/main` at PR #13) |
+| Merge/deploy | Merged through PR #44 (merge commit `105129f`, 2026-11-03); no deployment. `origin/main` is `105129f` and contains the whole authorized branch |
 
 A row is **done** only when the native screen exists and a core test covers its
 logic. Everything else is **partial**, with the missing piece named. Test counts

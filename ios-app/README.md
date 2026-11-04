@@ -337,6 +337,10 @@ xcodebuild build \
   CODE_SIGNING_ALLOWED=NO
 ```
 
+After a pull that adds Swift files, run `./regen-and-build.sh` (from `ios-app/`):
+the generated `Hustler.xcodeproj` is gitignored and will not reference new files
+until XcodeGen regenerates it. The script prints `PASS` or `FAIL`.
+
 CI (`.github/workflows/ios.yml`):
 
 | Job | Runner | What it proves |
