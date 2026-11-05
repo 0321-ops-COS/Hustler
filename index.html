@@ -98,6 +98,7 @@ nav button[hidden]{display:none}
 #scopeTxt{width:100%;background:var(--g1);border-color:var(--g2)}
 #scopeTxt[hidden],#csv[hidden]{display:none}
 #scSel{flex:1;min-width:0;margin:0;background:var(--g1);color:var(--tx);border:1px solid var(--g2);border-radius:10px;padding:10px;font:600 14px Sora,sans-serif}
+#recSel{width:100%;background:var(--g1);color:var(--tx);border:1px solid var(--g2);border-radius:10px;padding:10px;font:600 14px Sora,sans-serif}
 #scopePick{align-items:center;margin:0 0 10px}
 #scopePick .btn{padding:10px 16px;font-size:18px;line-height:1}
 </style>
@@ -130,6 +131,7 @@ nav button[hidden]{display:none}
   <div class="card" id="start"></div>
   <div class="card" id="masterTile"></div>
   <div class="card" id="float"></div>
+  <div class="card" id="stkBar" hidden></div>
   <div class="card" id="quest"></div>
   <div class="card"><div class="seg" id="seg"><button data-p="day" class="on">Day</button><button data-p="week">Week</button><button data-p="month">Month</button><button data-p="year">Year</button></div><div id="earnBig"></div><div class="wrap" id="earnTbl" style="margin-top:12px"></div></div>
   <div class="card" id="ca"></div>
@@ -155,6 +157,7 @@ nav button[hidden]{display:none}
   <div class="card"><h2 style="font-size:17px">Shortcut</h2><p class="hint">Run your DoorDash shortcut by name, or install it from your iCloud link.</p><div class="row"><button class="btn go" id="runSc">Run the offer analyzer</button><button class="btn ghost" id="getSc">Get the shortcut</button></div></div>
   <div class="card"><h2 style="font-size:17px">Testing</h2><p class="hint">Nothing here changes your log or your numbers.</p><div class="row"><button class="btn ghost" id="tstLink">Send a test offer</button><button class="btn ghost" id="tstCloud">Test cloud connection</button></div><p class="hint" id="tstMsg"></p></div>
   <div class="card"><h2 style="font-size:17px">Rebuild archive rows</h2><p class="hint">Rebuilds every DoorDash archive row in your master log from your saved archive. Live shortcut rows are not touched. Duplicates between the archive and shortcut rows are hidden in the totals, never deleted.</p><div class="row"><button class="btn ghost" id="rebuildArch">Rebuild archive rows</button></div></div>
+  <div class="card"><h2 style="font-size:17px">Stacked orders</h2><p class="hint">A stacked (batched) offer carries more than one delivery. ON evaluates it like any other offer. OFF leaves stacked offers out of verdicts, recommendations and quests, while their pay and deliveries still count in your earnings history.</p><div class="seg" id="stkSeg" style="margin-top:10px"><button data-stk="1" class="on">ON</button><button data-stk="0">OFF</button></div><p class="hint" id="stkMsg"></p></div>
   <div class="card"><h2 style="font-size:17px">Pages</h2><p class="hint">Tap a bar to open that page. Use its switch to add or remove it from the menu.</p><div id="pgList"></div></div>
 </section>
 <section id="log" hidden>
@@ -171,6 +174,15 @@ nav button[hidden]{display:none}
     <p class="hint">Add your offers file or data_archive.zip on the Data page. <button class="btn ghost" style="padding:4px 10px" data-open="data">Open Data page</button></p>
     <div id="check" style="margin-top:12px"></div>
     <p class="hint" id="saveInfo">Demo data is never saved. Your own log saves to your account.</p>
+  </div>
+  <div class="card" id="recCard">
+    <h2 style="font-size:17px">Actual payouts</h2>
+    <p class="hint">The offer amount stays in the log exactly as the shortcut wrote it. Put what DoorDash actually paid here, so earnings use the final amount and your offer numbers stay true. Mark a stacked offer here too: it counts once as an offer and once per delivery.</p>
+    <div class="row"><select id="recSel" aria-label="Pick an offer" style="flex:1;min-width:0"></select></div>
+    <div class="fields" style="margin-top:10px"><label>Actual payout ($)<input inputmode="decimal" id="rec_p" placeholder="blank = offer amount"></label><label>Base pay ($)<input inputmode="decimal" id="rec_b" placeholder="optional"></label><label>Tip ($)<input inputmode="decimal" id="rec_t" placeholder="optional"></label><label>Deliveries<input inputmode="numeric" id="rec_n" value="1"></label></div>
+    <div class="row"><button class="btn" id="rec_save">Save actual payout</button><button class="btn ghost" id="rec_del">Remove</button></div>
+    <p class="hint" id="recMsg"></p>
+    <div id="recList" style="margin-top:12px"></div>
   </div>
 </section>
 <section id="data" hidden>
@@ -222,7 +234,7 @@ nav button[hidden]{display:none}
     <p class="hint">The AI brief is plain text with your rules, columns, settings and log. Paste it into any AI to continue.</p>
   </div>
   <div class="card" id="cloudCard"><h2 style="font-size:17px">Cloud sync</h2><p class="hint" id="cloudMsg"></p><div id="cloudBody"></div></div>
-  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">The shortcut sends each offer to your account. Sign in under Settings, then offers appear here when you open the app, or tap the button. Backup: have the shortcut copy its log row, then tap Paste copied rows in Log.</p><div class="row"><button class="btn" id="pullOffers">Pull offers from shortcut</button></div></div>
+  <div class="card"><h2 style="font-size:17px">Shortcut link-up</h2><p class="hint">The shortcut sends each offer to your account. Sign in under Settings, then offers appear here when you open the app, or tap the button. Backup: have the shortcut copy its log row, then tap Paste copied rows in Log.</p><div class="row"><button class="btn" id="pullOffers">Pull offers from shortcut</button></div><p class="hint" id="pullInfo"></p></div>
   <div class="card" style="text-align:center"><img id="ico" alt="Hustle HQ app icon" width="120" height="120" style="border-radius:26px"><p class="hint">App icon. Press and hold to save it.</p></div>
 </main>
 <div id="toast" role="status"></div>
@@ -247,7 +259,7 @@ document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{
 
 // storage: signed-in cloud account (Supabase) when available, always mirrored to this browser
 let sb=null,sbUser=null;
-const KEYS=["settings","log","archive","statements","ca"];
+const KEYS=["settings","log","archive","statements","ca","actuals"];
 const tmo=(p,ms=8000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
 function dirtyList(){try{return JSON.parse(localStorage.getItem("hh_dirty")||"[]")}catch(e){return[]}}
 function setDirty(k,on){const d=new Set(dirtyList());on?d.add(k):d.delete(k);try{localStorage.setItem("hh_dirty",JSON.stringify([...d]))}catch(e){}}
@@ -363,6 +375,53 @@ const yes=v=>/accept|take|yes|worth|good|go/i.test(v||"")&&!/decline|pass|no\b/i
 const took=v=>/accept/i.test(v||"")&&!/declin/i.test(v||"");
 let rows=[];
 
+// ---- Actual payouts ----
+// The shortcut row keeps the offer amount untouched, so the master log format and the native parser never change.
+// What DoorDash finally paid, and how many deliveries an offer carried, lives beside the log in its own saved key.
+let ACT={},RECKEY="";
+const rk=r=>(((r.date||"").slice(0,10)+" "+((r.time||"").trim())).trim()+" | "+num(r.payout).toFixed(2)+" | "+num(r.miles)+" | "+num(r.items));
+function actOf(r){return ACT[rk(r)]||null}
+function isStack(r){const a=actOf(r);return !!(a&&num(a.n)>1)}
+function deliv(r){const a=actOf(r);return a&&num(a.n)>0?Math.round(num(a.n)):1}
+async function saveAct(){return put("actuals",{v:1,a:ACT})}
+const stackOn=()=>S.stack!==0;
+function recRows(){return rows.filter(r=>r.src!=="archive").slice(-40).reverse()}
+function fillRec(k){RECKEY=k;const a=ACT[k]||{};
+  if($("#rec_p"))$("#rec_p").value=a.p!=null?String(a.p):"";
+  if($("#rec_b"))$("#rec_b").value=a.base!=null?String(a.base):"";
+  if($("#rec_t"))$("#rec_t").value=a.tip!=null?String(a.tip):"";
+  if($("#rec_n"))$("#rec_n").value=String(num(a.n)||1)}
+function renderStack(){
+  const on=stackOn(),st=rows.filter(r=>r.src!=="archive"&&isStack(r)).length;
+  document.querySelectorAll("#stkSeg button").forEach(b=>b.classList.toggle("on",(b.dataset.stk==="1")===on));
+  const m=$("#stkMsg");if(m)m.textContent=on?"Stacked offers are evaluated like any other offer.":"Stacked offers are out of verdicts, recommendations and quests. Their pay and deliveries still count in earnings.";
+  const bar=$("#stkBar");
+  if(bar){bar.hidden=on;bar.innerHTML='<h2 style="font-size:17px">Stacked orders are OFF</h2><p class="hint" style="font-size:14px;color:var(--tx)">'+(st?st+" stacked offer"+(st===1?" is":"s are")+" left out of verdicts, recommendations and quests. ":"No stacked offer is marked yet. ")+"Pay and deliveries still count in earnings.</p><button class=\"btn ghost\" data-open=\"settings\" style=\"margin-top:8px\">Stacked orders setting</button>"}
+}
+function drawRec(){
+  const sel=$("#recSel");if(!sel)return;
+  const rs=recRows();
+  sel.innerHTML=rs.length?rs.map(r=>{const k=rk(r),a=ACT[k];return'<option value="'+esc(k)+'">'+esc((r.date||"")+" "+(r.time||""))+" · "+$f(num(r.payout))+" offer"+(a?" · actual "+$f(num(a.p))+(num(a.n)>1?" · "+num(a.n)+" deliveries":""):"")+'</option>'}).join(""):'<option value="">No offers in the log yet</option>';
+  const k=(RECKEY&&ACT[RECKEY]!==undefined&&rs.some(r=>rk(r)===RECKEY))?RECKEY:(rs[0]?rk(rs[0]):"");
+  sel.value=k;if(k)fillRec(k);
+  const used=Object.entries(ACT),list=$("#recList");
+  if(list)list.innerHTML=used.length?'<div class="wrap"><table><tr><th>Offer</th><th>Offer pay</th><th>Actual</th><th>Tip</th><th>Deliv.</th></tr>'+used.slice(-12).reverse().map(e=>{const b=e[0].split(" | "),a=e[1];return'<tr><td>'+esc(b[0])+'</td><td>'+$f(num(b[1]))+'</td><td>'+$f(num(a.p))+'</td><td>'+((a.tip===null||a.tip===undefined)?"--":$f(num(a.tip)))+'</td><td>'+(num(a.n)||1)+'</td></tr>'}).join("")+'</table></div><p class="hint">Your log is unchanged. These actual amounts are what earnings, months and quests use.</p>':'<p class="hint">No actual payouts yet. Every offer uses its own amount until you add one.</p>'
+}
+document.addEventListener("click",async e=>{const b=e.target.closest("#stkSeg button");if(!b)return;S.stack=b.dataset.stk==="1"?1:0;const w=await put("settings",S);analyze(parse($("#csv").value));toast((S.stack?"Stacked orders on":"Stacked orders off")+(w===false?": could not save":""))});
+$("#recSel").onchange=e=>fillRec(e.target.value);
+$("#rec_save").onclick=async()=>{
+  const k=$("#recSel").value,row=rows.find(r=>rk(r)===k);
+  if(!k||!row){toast("Pick an offer first");return}
+  const typed=num($("#rec_p").value),base=$("#rec_b").value.trim(),tip=$("#rec_t").value.trim(),n=Math.max(1,Math.round(num($("#rec_n").value)||1));
+  const b=base===""?null:num(base),t=tip===""?null:num(tip);
+  const final=(b!=null||t!=null)?(b||0)+(t||0):typed;
+  if(!(final>0)){toast("Enter the actual payout");return}
+  ACT={...ACT,[k]:{p:+final.toFixed(2),base:b,tip:t,n,offer:num(row.payout),at:new Date().toISOString()}};
+  RECKEY=k;const w=await saveAct();analyze(parse($("#csv").value));
+  const msg=$("#recMsg");if(msg)msg.textContent=w?"Actual payout saved. Earnings use it now.":"Saved in this browser. The account save is pending.";
+  toast("Actual payout saved")};
+$("#rec_del").onclick=async()=>{const k=$("#recSel").value;if(!k||!ACT[k]){toast("No actual recorded for that offer");return}const N={...ACT};delete N[k];ACT=N;await saveAct();analyze(parse($("#csv").value));const msg=$("#recMsg");if(msg)msg.textContent="Removed. That offer uses its own amount again.";toast("Actual payout removed")};
+
 let LOGACC=null;
 function renderMaster(){const n=rows.length,l=rows.length?rows[rows.length-1]:null,t="Master file";
   const txt=n?n+" row"+(n===1?"":"s")+". Newest: "+esc((l.date||"")+" "+(l.time||""))+".":"Empty. Add rows or files to start it.";
@@ -383,22 +442,24 @@ function analyze(data){
   // current acceptance rate = the newest shortcut row's Acceptance rate column in the master log
   LOGACC=null;for(let i=data.length-1;i>=0;i--){const r=data[i];if(r.src!=="archive"&&r.rate!==undefined&&r.rate!==""&&num(r.rate)>0){LOGACC=num(r.rate);break}}
   renderEarn();refreshFirst();const n=data.length;
-  if(!n){renderGame([],[]);$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;return}
+  if(!n){renderGame([],[]);$("#stats").innerHTML="";$("#follow").textContent="--";$("#arc").style.strokeDashoffset=352;try{renderStack();drawRec()}catch(e){}return}
   const gasOf=r=>(S.zoneGas&&S.zoneGas[r.zone])||S.gas;
-  const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),net=("net" in r&&r.net!=="")?num(r.net):p-m*(gasOf(r)/S.mpg+S.wear);
-    return{...r,p,m,min,net,v:yes(r.verdict),t:took(r.choice)}});
+  const R=data.map(r=>{const p=num(r.payout),m=num(r.miles),min=num(r.minutes),per=gasOf(r)/S.mpg+S.wear,logNet=("net" in r&&r.net!=="")?num(r.net):p-m*per,a=actOf(r),act=a&&num(a.p)>0,fp=act?num(a.p):p;
+    return{...r,p:fp,op:p,m,min,net:act?fp-m*per:logNet,onet:p-m*per,v:yes(r.verdict),t:took(r.choice),stk:isStack(r),dn:deliv(r)}});
   const acc=R.filter(r=>r.t),hrs=acc.reduce((a,r)=>a+r.min,0)/60;
   const pay=acc.reduce((a,r)=>a+r.p,0),mi=acc.reduce((a,r)=>a+r.m,0),net=acc.reduce((a,r)=>a+r.net,0);
-  const RL=R.filter(r=>r.src!=="archive"),nl=RL.length,accL=RL.filter(r=>r.t).length,followed=RL.filter(r=>r.v===r.t).length,fp=nl?Math.round(100*followed/nl):0;
+  const dns=acc.reduce((a,r)=>a+(r.dn||1),0);
+  const RL=R.filter(r=>r.src!=="archive"),RLE=stackOn()?RL:RL.filter(r=>!r.stk),nl=RLE.length,accL=RLE.filter(r=>r.t).length,followed=RLE.filter(r=>r.v===r.t).length,fp=nl?Math.round(100*followed/nl):0;
   LOGRATE=nl?Math.round(100*accL/nl):null;showLR();
   $("#follow").textContent=fp+"%";$("#arc").style.strokeDashoffset=352*(1-fp/100);
   $("#followTxt").textContent=nl?followed+" of "+nl+" logged offers matched the verdict. "+(fp>=85?"Locked in.":"Room to tighten up."):"Archive rows have no verdicts. Log offers with the shortcut to see this.";$("#estNote").textContent=n>nl?(n-nl)+" deliveries come from your DoorDash archive, with estimated pay and miles.":"";
   const st=[["Acceptance",nl?Math.round(100*accL/nl)+"%":"--"],["Gross",$f(pay,0),1],["Net after car",$f(net,0),1],["Net $/hr",hrs?$f(net/hrs):"--",1],["Net $/mile",mi?$f(net/mi):"--",1],["Offers",n],["Miles driven",mi.toFixed(0)],["Hours",hrs.toFixed(1)]];
   $("#stats").innerHTML=st.map(s=>`<div class="stat"><div class="num ${s[2]?"money":""}">${s[1]}</div><span>${s[0]}</span></div>`).join("");
   // matrix
-  const c=(v,t)=>RL.filter(r=>r.v===v&&r.t===t).length;
+  const c=(v,t)=>RLE.filter(r=>r.v===v&&r.t===t).length;
+  // offer analytics stay on the offer amount, so a later tip never rewrites how an offer looked
   const hr=(arr)=>{const h=arr.reduce((a,r)=>a+r.min,0)/60;return h?$f(arr.reduce((a,r)=>a+r.net,0)/h):"--"};
-  const cell=(v,t)=>RL.filter(r=>r.v===v&&r.t===t);
+  const cell=(v,t)=>RLE.filter(r=>r.v===v&&r.t===t).map(r=>({...r,net:r.onet}));
   $("#matrix").innerHTML=`<table><tr><th>Verdict / you</th><th>Offers</th><th>Net $/hr</th></tr>`+
    [[true,true,"Said yes, you accepted","good"],[true,false,"Said yes, you declined","bad"],[false,true,"Said no, you accepted","bad"],[false,false,"Said no, you declined","good"]]
    .map(x=>`<tr><td class="${x[3]}">${x[2]}</td><td>${c(x[0],x[1])}</td><td>${hr(cell(x[0],x[1]))}</td></tr>`).join("")+`</table>`;
@@ -417,12 +478,13 @@ function analyze(data){
   $("#months").innerHTML=Object.keys(M).length?`<table><tr><th>Month</th><th>Orders</th><th>Gross</th><th>Miles</th><th>Net</th><th>Mileage deduction</th></tr>${Object.keys(M).sort().reverse().map(k=>{const a=M[k],g=a.reduce((x,r)=>x+r.p,0),m=a.reduce((x,r)=>x+r.m,0),nt=a.reduce((x,r)=>x+r.net,0);return`<tr><td>${k}</td><td>${a.length}</td><td>${$f(g)}</td><td>${m.toFixed(0)}</td><td>${$f(nt)}</td><td>${$f(m*S.taxRate)}</td></tr>`}).join("")}</table>`:'<p class="hint">Needs dates like 2026-10-24 in the log.</p>';
   // level
   const L=[["Rookie",0],["Grinder",25],["Operator",100],["Hustler",300],["Legend",800]],LSTEP=250;
-  const nd=acc.length; // completed deliveries only, so it matches DoorDash's completed-orders count
+  const nd=dns; // deliveries, not offers: one stacked offer still carries each delivery DoorDash counts
   let i=0;L.forEach((l,j)=>{if(nd>=l[1])i=j});
   let nm=L[i][0],lo=L[i][1],hi=L[i+1]?L[i+1][1]:null;
   if(hi===null){const k=Math.floor((nd-800)/LSTEP);lo=800+k*LSTEP;hi=lo+LSTEP;nm=k?"Legend "+(k+1<40?rom(k+1):k+1):"Legend"}
   $("#lvl").textContent=nm+" · "+nd+" deliveries";$("#lvl").title=(hi-nd)+" deliveries to the next level";
   $("#xp").style.width=Math.max(0,Math.min(100,100*(nd-lo)/(hi-lo)))+"%";renderGame(R,RL);
+  try{renderStack();drawRec()}catch(e){}
 }
 const rom=n=>{let r="";[[10,"X"],[9,"IX"],[5,"V"],[4,"IV"],[1,"I"]].forEach(([v,c])=>{while(n>=v){r+=c;n-=v}});return r};
 function showCheck(d){const el=$("#check");if(!d.length){el.innerHTML="";return}
@@ -438,7 +500,7 @@ function verdict(r,P,rate){const per=((P.zoneGas&&P.zoneGas[r.zone])||P.gas)/P.m
 function drawWf(){$("#wfields").innerHTML=Object.keys(DEF).map(k=>`<label>${LBL[k]}<input inputmode="decimal" data-w="${k}" value="${S[k]}"></label>`).join("")}
 function draft(){const D={...S};document.querySelectorAll("[data-w]").forEach(i=>D[i.dataset.w]=num(i.value));return D}
 $("#runWf").onclick=()=>{const D=draft();if(!rows.length){$("#wfout").innerHTML='<div class="card"><p class="hint">Load a log first.</p></div>';return}
- const A=rows.map(r=>({r,a:verdict(r,S,num(r.rate)||S.accept),b:verdict(r,D,num(r.rate)||D.accept)}));
+ const A=rows.filter(r=>stackOn()||!isStack(r)).map(r=>({r,a:verdict(r,S,num(r.rate)||S.accept),b:verdict(r,D,num(r.rate)||D.accept)}));
  const sum=k=>{const y=A.filter(x=>x[k].ok),net=y.reduce((s,x)=>s+x[k].net,0),h=y.reduce((s,x)=>s+x[k].h,0);return{n:y.length,net,hr:h?net/h:0}};
  const a=sum("a"),b=sum("b"),fl=A.filter(x=>x.a.ok!==x.b.ok),d=b.net-a.net;
  $("#wfout").innerHTML=`<div class="card"><h2 style="font-size:17px">Replay results</h2><p class="hint">Acceptance rate used: ${num(S.accept)}% now, ${num(D.accept)}% in your change. Assumes you follow each verdict.</p><div class="wrap"><table><tr><th></th><th>Current</th><th>Your change</th></tr><tr><td>Offers you'd take</td><td>${a.n}</td><td>${b.n}</td></tr><tr><td>Net total</td><td>${$f(a.net,0)}</td><td>${$f(b.net,0)}</td></tr><tr><td>Net $/hr</td><td>${$f(a.hr)}</td><td>${$f(b.hr)}</td></tr></table></div><p class="${d>=0?"good":"bad"}" style="margin:10px 0 0"><b>${fl.length} verdicts flipped, ${d>=0?"+":"-"}${$f(Math.abs(d),0)} net</b></p></div>`+(fl.length?`<div class="card"><h2 style="font-size:17px">Flipped offers</h2><div class="wrap"><table><tr><th>Offer</th><th>Payout</th><th>Miles</th><th>Now</th><th>Change</th></tr>${fl.slice(0,12).map(x=>`<tr><td>${esc(x.r.date||"")} ${esc(x.r.zone||"")}</td><td>${$f(x.a.net+num(x.r.miles)*(S.gas/S.mpg+S.wear))}</td><td>${num(x.r.miles)}</td><td>${x.a.ok?"Take":"Pass"}</td><td class="${x.b.ok?"good":"bad"}">${x.b.ok?"Take":"Pass"}</td></tr>`).join("")}</table></div></div>`:"")};
@@ -565,17 +627,18 @@ let PER="day",LG=[[],[]];
 const iso=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 function keyOf(s,p){s=(s||"").slice(0,10);if(p==="day")return s;if(p==="month")return s.slice(0,7);if(p==="year")return s.slice(0,4);const d=new Date(s+"T12:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));return iso(d)}
 function renderGame(R,RL){LG=[R,RL];setTimeout(renderCA,0);
- const acc=R.filter(r=>r.t&&/^\d{4}-\d\d-\d\d/.test(r.date||"")),G={},z=()=>({p:0,n:0,c:0,m:0});
- acc.forEach(r=>{const g=G[keyOf(r.date,PER)]=G[keyOf(r.date,PER)]||z();g.p+=r.p;g.n+=r.net;g.c++;g.m+=r.min});
+ const acc=R.filter(r=>r.t&&/^\d{4}-\d\d-\d\d/.test(r.date||"")),G={},z=()=>({p:0,n:0,c:0,m:0,d:0});
+ acc.forEach(r=>{const g=G[keyOf(r.date,PER)]=G[keyOf(r.date,PER)]||z();g.p+=r.p;g.n+=r.net;g.c++;g.m+=r.min;g.d+=(r.dn||1)});
  const now=keyOf(iso(new Date()),PER),ks=Object.keys(G).sort().reverse().slice(0,PER==="day"?10:PER==="week"?8:12);if(!ks.includes(now))ks.unshift(now);
  const cur=G[now]||z(),lab={day:"Today",week:"This week",month:"This month",year:"This year"}[PER],hh=g=>g.m?$f(g.n/(g.m/60)):"--";
- $("#earnBig").innerHTML=`<div class="grid"><div class="stat"><div class="num money">${$f(cur.n,0)}</div><span>${lab} net</span></div><div class="stat"><div class="num">${$f(cur.p,0)}</div><span>Gross</span></div><div class="stat"><div class="num">${cur.c}</div><span>Offers taken</span></div><div class="stat"><div class="num">${hh(cur)}</div><span>Net $/hr</span></div></div>`;
+ $("#earnBig").innerHTML=`<div class="grid"><div class="stat"><div class="num money">${$f(cur.n,0)}</div><span>${lab} net</span></div><div class="stat"><div class="num">${$f(cur.p,0)}</div><span>Gross</span></div><div class="stat"><div class="num">${cur.c}</div><span>Offers taken${cur.d!==cur.c?" · "+cur.d+" deliveries":""}</span></div><div class="stat"><div class="num">${hh(cur)}</div><span>Net $/hr</span></div></div>`;
  $("#earnTbl").innerHTML=`<table><tr><th>${PER==="week"?"Week of":"Period"}</th><th>Gross</th><th>Net</th><th>Taken</th><th>Net $/hr</th></tr>`+ks.map(k=>{const g=G[k]||z();return`<tr><td>${k}</td><td>${$f(g.p)}</td><td>${$f(g.n)}</td><td>${g.c}</td><td>${hh(g)}</td></tr>`}).join("")+`</table>`;
- const t=iso(new Date()),fol=RL.filter(r=>(r.date||"").slice(0,10)===t&&r.v===r.t).length,dn={};
+ const REV=stackOn()?RL:RL.filter(r=>!r.stk);
+ const t=iso(new Date()),fol=REV.filter(r=>(r.date||"").slice(0,10)===t&&r.v===r.t).length,dn={};
  acc.forEach(r=>{const k=r.date.slice(0,10);dn[k]=(dn[k]||0)+r.net});
  const past=Object.keys(dn).filter(k=>k!==t).map(k=>dn[k]),avg=past.length?past.reduce((a,b)=>a+b,0)/past.length:50,tn=dn[t]||0;
- let st=0,best=0,run=0;RL.forEach(r=>{if(r.v===r.t){run++;best=Math.max(best,run)}else run=0});for(let i=RL.length-1;i>=0&&RL[i].v===RL[i].t;i--)st++;
- renderQuests(R,RL,acc,st,best)}
+ let st=0,best=0,run=0;REV.forEach(r=>{if(r.v===r.t){run++;best=Math.max(best,run)}else run=0});for(let i=REV.length-1;i>=0&&REV[i].v===REV[i].t;i--)st++;
+ renderQuests(R,REV,acc,st,best)}
 // ---- Endless quests: weekly targets come from your own recent weeks, lifetime totals never reset ----
 const NICE=v=>{for(let k=2;k<12;k++)for(const m of[1,2.5,5]){const c=m*Math.pow(10,k);if(c>v)return c}return v*2};
 function weekAggs(R,RL){const W={},g=k=>W[k]=W[k]||{n:0,pay:0,net:0,mi:0,min:0,arch:0,off:0,acc:0,fol:0,yes:0,yesAcc:0};
@@ -712,17 +775,21 @@ document.addEventListener("click",async e=>{const b=e.target.closest("[data-wipe
  toast(all?"Everything wiped":"Deleted")});
 // Offers the shortcut POSTs to the Supabase "offers" function land in public.offers; pull the ones this log lacks.
 const nrm=x=>x.replace(/\s+/g," ").trim();
+const tsOf=t=>String(t||"").slice(0,16).replace("T"," ");
+function setPullInfo(t){const e=$("#pullInfo");if(e)e.textContent=t}
 async function pullOffers(manual){
-  if(!sb||!sbUser){if(manual)toast("Sign in under Settings to pull offers");return 0}
+  if(!sb||!sbUser){setPullInfo("Sign in under Settings to see offers from the shortcut");if(manual)toast("Sign in under Settings to pull offers");return 0}
   try{
-    const r=await tmo(sb.from("offers").select("row_text").order("ts",{ascending:true}).order("id",{ascending:true}).limit(5000),15000);
-    if(r.error){if(manual)toast("Could not read offers: "+r.error.message);return 0}
-    const raw=($("#csv").value||"").trim(),cur=masterLog(raw),out=mergeLog(cur,(r.data||[]).map(o=>o.row_text||"").join("\n"));
+    const r=await tmo(sb.from("offers").select("row_text,ts").order("ts",{ascending:true}).order("id",{ascending:true}).limit(5000),15000);
+    if(r.error){setPullInfo("Could not check for offers from the shortcut");if(manual)toast("Could not read offers: "+r.error.message);return 0}
+    const rows=r.data||[],raw=($("#csv").value||"").trim(),cur=masterLog(raw),out=mergeLog(cur,rows.map(o=>o.row_text||"").join("\n"));
     const added=logRows(out)-logRows(cur);
+    const newest=rows.length?tsOf(rows[rows.length-1].ts):"";
+    setPullInfo(newest?"Newest offer from the shortcut: "+newest+(added>0?" · "+added+" just added":""):"No offers from the shortcut yet");
     if(added<=0&&(cur===raw||!raw)){if(manual)toast("No new offers from the shortcut");return 0}
     await commitLog(out);
     toast(added>0?added+" new offer"+(added===1?"":"s")+" from the shortcut":"Log tidied");return added;
-  }catch(e){if(manual)toast("Could not reach your offers");return 0}
+  }catch(e){setPullInfo("Could not check for offers from the shortcut");if(manual)toast("Could not reach your offers");return 0}
 }
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&appReady)pullOffers()});
 $("#pullOffers").onclick=()=>pullOffers(true);
@@ -878,8 +945,8 @@ window.addEventListener("hashchange",()=>{
 (async()=>{
   drawFields();renderGame([],[]);renderMaster();
   await initStore();drawCloud();
-  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;drawFields()}setAcc();
-  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
+  const s=await get("settings");if(s){S={...DEF,monthly:s.monthly||{},zoneGas:s.zoneGas||{},gas:num(s.gas)>0?s.gas:DEF.gas};Object.keys(DEF).forEach(k=>{if(k!=="gas"&&s[k]!==undefined&&s[k]!==null&&Number.isFinite(Number(s[k])))S[k]=num(s[k])});if(s.accSet)S.accSet=1;if(s.stack!==undefined)S.stack=num(s.stack);drawFields()}setAcc();
+  const sm0=await get("statements");if(sm0&&sm0.s)STM=sm0.s;{const c0=await get("ca");if(c0&&c0.w)CA=c0.w}const ar=await get("archive");if(ar&&ar.r){ARCH=ar.r;renderArch()}const ac0=await get("actuals");if(ac0&&ac0.a)ACT=ac0.a;const l=await get("log");if(l&&l.csv){const mc=masterLog(l.csv),lc=logRows(mc)?mc:l.csv;$("#csv").value=lc;analyze(parse(lc));if(lc!==l.csv.trim())put("log",{csv:lc,v:1});$("#saveInfo").textContent=(store||sbUser)?"Loaded from your account.":"Loaded from this browser."}renderEarn();refreshFirst();$("#c_g").value=S.gas;renderCA();
   appReady=true;
   await processIncomingHash();
   await pullOffers();
