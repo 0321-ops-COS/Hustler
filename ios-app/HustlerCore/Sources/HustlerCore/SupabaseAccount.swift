@@ -91,6 +91,7 @@ public final class SupabaseAccount {
     }
     public var storedSession: SupabaseSession? { storage?.load() ?? memory }
 
+    /// Returns the new session (access token, optional refresh token, user ID) and stores it for later requests.
     @discardableResult
     public func signIn(email: String, password: String) async throws -> SupabaseSession {
         var request = makeRequest(path: "auth/v1/token",
@@ -109,6 +110,7 @@ public final class SupabaseAccount {
         }
         return session
     }
+    /// Clears the persisted session from the keychain (or the in-memory fallback) so the next call sees no signed-in user.
     public func signOut() { storage?.clear(); memory = nil }
 
     public func fetchSummary() async throws -> [StoreKeySummary] {
