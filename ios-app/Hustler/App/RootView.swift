@@ -5,6 +5,11 @@ import HustlerCore
 /// App shell. `NavigationPlan` decides which pages are visible and in what
 /// order; this file only draws that list and wires each page's view.
 struct RootView: View {
+    /// Returns the shell to the sign-in gate after Settings signs out.
+    var onSignedOut: () -> Void = {}
+    /// The gate's sentence about the pull after sign-in, shown on Home.
+    var accountNote: String? = nil
+
     @StateObject private var nav = NavigationViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: AppScreen = .scoreboard
@@ -16,7 +21,9 @@ struct RootView: View {
                     AppScreenView(
                         screen: screen,
                         onOpenData: { selection = .data },
-                        onPinsChanged: { nav.reload() }
+                        onPinsChanged: { nav.reload() },
+                        onSignedOut: onSignedOut,
+                        accountNote: accountNote
                     )
                 }
                 .tabItem { Label(screen.title, systemImage: Self.icon(for: screen)) }
@@ -55,14 +62,16 @@ struct AppScreenView: View {
     let screen: AppScreen
     var onOpenData: () -> Void = {}
     var onPinsChanged: () -> Void = {}
+    var onSignedOut: () -> Void = {}
+    var accountNote: String? = nil
 
     var body: some View {
         switch screen {
-        case .scoreboard: HomeView(onOpenData: onOpenData)
+        case .scoreboard: HomeView(onOpenData: onOpenData, accountNote: accountNote)
         case .check: CheckView()
         case .whatIf: WhatIfView()
         case .data: DataView()
-        case .settings: SettingsView(onPinsChanged: onPinsChanged)
+        case .settings: SettingsView(onPinsChanged: onPinsChanged, onSignedOut: onSignedOut)
         case .log: LogView()
         case .earn: EarningsView()
         case .hist: HistoryView()
