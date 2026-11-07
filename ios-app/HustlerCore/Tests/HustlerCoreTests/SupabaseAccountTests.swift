@@ -120,7 +120,7 @@ private final class StubURLProtocol: URLProtocol {
         switch request.url?.path {
         case "/auth/v1/token":
             status = 200
-            body = #"{"access_token":"fresh-access","refresh_token":"fresh-refresh","user":{"id":"user-1"}}"#
+            body = #"{"access_token":"fresh-access","refresh_token":"fresh-refresh","expires_in":3600,"user":{"id":"user-1"}}"#
         case "/rest/v1/hh_store":
             status = 200
             body = #"[{"k":"settings","updated_at":"2026-11-02T10:00:00Z","v":{"accept":89}}]"#
